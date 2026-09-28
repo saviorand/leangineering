@@ -1,6 +1,6 @@
 # leangineering
 
-Source for [leangineering.com](https://leangineering.com), a community and learning resource for software engineers using Lean 4. The site is written in Lean.
+Source for [leangineer.com](https://leangineer.com), a community and learning resource for software engineers using Lean 4. The site is written in Lean.
 
 ## What's here
 

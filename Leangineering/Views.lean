@@ -221,7 +221,7 @@ def homePage (site : Awesome) (mode : Mode) : String :=
     div [
       h1 [ "Lean 4 for Software Engineers" ],
       p [ a { href := "https://valentin.wiki" } [ "Valentin Erokhin" ] ] { class_ := "author" },
-      p [ "leangineering.com" ] { class_ := "venue" }
+      p [ "leangineer.com" ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [
       h2 [ "Abstract" ] { class_ := "abstract-title" },
