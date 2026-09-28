@@ -1,0 +1,133 @@
+:root {
+  --ink: #1f3329;
+  --ink-soft: #4a5d52;
+  --paper: #f3efe6;
+  --paper-deep: #e8e3d4;
+  --accent: #2d5a3f;
+  --rule: #d5cfbd;
+  --serif: "Newsreader", Georgia, serif;
+  --sans: "Inter", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e3d4;
+    --ink-soft: #a9b3aa;
+    --paper: #1a1c1b;
+    --paper-deep: #25282a;
+    --accent: #8fbf9f;
+    --rule: #33383a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--paper); color: var(--ink); }
+
+body {
+  margin: 0 auto;
+  max-width: 52rem;
+  padding: 0 1.25rem;
+  font: 16px/1.6 var(--sans);
+}
+
+a { color: var(--accent); text-underline-offset: 0.2em; }
+a:hover { text-decoration-thickness: 2px; }
+
+code {
+  font: 0.88em var(--mono);
+  background: var(--paper-deep);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+h1, h2, h3 { font-family: var(--serif); font-weight: 500; line-height: 1.2; }
+h1 { font-size: 2.6rem; margin: 0 0 0.5rem; }
+h2 { font-size: 1.6rem; margin: 2.5rem 0 0.75rem; }
+
+.site-header nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.brand { font: 500 1.3rem var(--serif); color: var(--ink); text-decoration: none; }
+.nav-links a { margin-left: 1.25rem; color: var(--ink-soft); text-decoration: none; }
+.nav-links a:hover { color: var(--accent); }
+
+main { padding: 2.5rem 0 3rem; }
+
+.hero { margin-bottom: 2rem; }
+.lede { font: 1.25rem/1.5 var(--serif); color: var(--ink-soft); }
+.meta, .crumb { color: var(--ink-soft); font-size: 0.9rem; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+.card {
+  display: block;
+  padding: 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+}
+a.card:hover { border-color: var(--accent); }
+.card p { margin: 0; }
+.card-title { display: block; font: 500 1.35rem var(--serif); margin-bottom: 0.35rem; }
+.card-body { display: block; color: var(--ink-soft); }
+.card.muted { background: var(--paper-deep); border-color: transparent; }
+.soon { margin-top: 0.75rem !important; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+
+.about { margin-top: 3rem; }
+
+.search-box { position: sticky; top: 0; padding: 0.75rem 0; background: var(--paper); z-index: 1; }
+.search {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  font: inherit;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+}
+.search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.result-summary { color: var(--ink-soft); }
+
+.category-nav ul { list-style: none; padding: 0; margin: 1rem 0 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.category-nav a {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  text-decoration: none;
+}
+.category-nav a:hover { border-color: var(--accent); }
+
+.count { margin-left: 0.4rem; font: 0.75em var(--sans); color: var(--ink-soft); }
+.category h2 a { color: var(--ink); text-decoration: none; }
+.category h2 a:hover { color: var(--accent); }
+
+.group-label {
+  margin: 1.5rem 0 0.25rem;
+  font: 600 0.8rem var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.entries { list-style: none; padding: 0; margin: 0; }
+.entry { padding: 0.6rem 0; border-bottom: 1px solid var(--rule); }
+.entry-name { font-weight: 600; margin-right: 0.5rem; }
+.entry-desc { color: var(--ink); }
+.entry-repo { display: block; font: 0.78rem var(--mono); color: var(--ink-soft); }
+
+.pager { display: flex; justify-content: space-between; margin-top: 2.5rem; }
+
+.site-footer { padding: 1.5rem 0 3rem; border-top: 1px solid var(--rule); color: var(--ink-soft); font-size: 0.85rem; }
+
+@media (max-width: 40rem) {
+  h1 { font-size: 2rem; }
+  .nav-links a { margin-left: 0.9rem; }
+}

@@ -1,0 +1,44 @@
+import Std.Http
+import Routing
+import Datastar
+import Leangineering.Awesome
+import Leangineering.Views
+
+namespace Leangineering
+
+open Std Http Async Server
+open Routing Datastar
+
+-- `search` comes before `category`, whose `:slug` would otherwise match "search".
+route_table Site
+  [ home := "/",
+    awesome := "/awesome",
+    search := "/awesome/search",
+    category := "/awesome/:slug:String",
+    css := "/static/site.css" ]
+
+structure SearchSignals where
+  q : String
+  deriving Lean.FromJson
+
+/-- Datastar search: reads the `q` signal and patches `#results` with the matching entries. -/
+def searchHandler (site : Awesome) (req : Request Body.Stream) : ContextAsync (Response Body.Any) := do
+  match ← readSignals (α := SearchSignals) req with
+  | .error e => return ← Response.badRequest |>.text e
+  | .ok { q } =>
+    return ← sseResponse fun sse => sse.patchElements (Views.results site q).render
+
+def app (site : Awesome) (css : String) : StatelessHandler :=
+  let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage true)
+  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site true)),
+    .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site true)),
+    .get Site.patterns.search (searchHandler site),
+    .get Site.patterns.category (fun slug req =>
+      match site.find? slug with
+      | some c => Response.ok.html (Views.categoryPage site c true)
+      | none => notFound req),
+    .get Site.patterns.css (fun _ =>
+      Response.ok |>.header! "Content-Type" "text/css; charset=utf-8" |>.fromBytes css.toUTF8) ]
+  |> toHandler (notFound := notFound)
+
+end Leangineering
