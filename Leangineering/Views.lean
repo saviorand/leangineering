@@ -63,7 +63,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           a { href := "https://github.com/paulbutcher/lean-routing" } [ "lean-routing" ], ", ",
           a { href := "https://github.com/paulbutcher/lean-markdown" } [ "lean-markdown" ], " and ",
           a { href := "https://github.com/saviorand/datastar-lean" } [ "datastar-lean" ], ". ",
-          a { href := sourceUrl } [ "Read the source" ], "."
+          a { href := sourceUrl } [ "Source on GitHub" ], "."
         ]
       ] { class_ := "site-footer" }
     ]
@@ -106,14 +106,20 @@ def results (site : Awesome) (query : String) : Node .flow :=
   else
     let found := site.search q
     let n := found.foldl (· + ·.entryCount) 0
-    div ([
-      p [ (s!"{n} {if n == 1 then "match" else "matches"} for “{q}”" : Node .phrasing) ]
-        { class_ := "result-summary" }
-    ] ++ found.toList.map categorySection) { id := "results" }
+    if n == 0 then
+      div [
+        p [ (s!"Nothing matches “{q}”. Maybe nobody has built it yet? Sounds like your next project." : Node .phrasing) ]
+          { class_ := "result-summary" }
+      ] { id := "results" }
+    else
+      div ([
+        p [ (s!"{n} {if n == 1 then "match" else "matches"} for “{q}”" : Node .phrasing) ]
+          { class_ := "result-summary" }
+      ] ++ found.toList.map categorySection) { id := "results" }
 
 def searchBox : Node .flow :=
   div [
-    input { type := "search", placeholder := "Search libraries and tools…", class_ := "search" }
+    input { type := "search", placeholder := "Search, e.g. postgres, ffi, parser…", class_ := "search" }
       [ ("aria-label", "Search the list"),
         ("data-bind:q", ""),
         ("data-on:input__debounce.150ms", "@get('/awesome/search')") ]
@@ -124,27 +130,40 @@ def homePage (site : Awesome) (interactive : Bool) : String :=
     "A community and learning resource for software engineers using Lean 4." (interactive := interactive) [
     section_ [
       h1 [ "Lean 4 for software engineers" ],
-      p [ "Lean is a programming language you can prove things about. Leangineering is about the programming part: libraries, tools, and how to build real software with them." ]
-        { class_ := "lede" }
+      p [ "Lean is not just for mathematicians anymore. You can use it to build real software, today." ]
+        { class_ := "lede" },
+      p [ "Lean is a compiled functional language that happens to also be a theorem prover. Most of what's written about it is about the proving part. Leangineering is about the programming part: libraries, tools, and how to actually ship things with them. No category theory required." ]
     ] { class_ := "hero" },
     div [
       a { href := "/awesome", class_ := "card" } [
         span [ "Awesome Lean" ] { class_ := "card-title" },
-        span [ (s!"{site.entryCount} libraries, tools and projects in {site.categories.size} categories" : Node .phrasing) ]
+        span [ (s!"{site.entryCount} libraries, tools and projects for building software in Lean, in {site.categories.size} categories. Web servers, databases, FFI, parsers, and more." : Node .phrasing) ]
           { class_ := "card-body" }
       ],
       div [
         p [ span [ "Guides" ] { class_ := "card-title" } ],
-        p [ "Building web apps, FFI, and Lean for Rust and Haskell developers. Every code sample on this site will be compiled." ]
+        p [ "Hands-on guides: web apps, FFI, and Lean for people coming from Rust, Haskell or TypeScript. Every code sample here gets compiled, so if it's on the site, it works." ]
           { class_ := "card-body" },
         p [ "Coming soon" ] { class_ := "soon" }
       ] { class_ := "card muted" }
     ] { class_ := "cards" },
     section_ [
       h2 [ "This site is written in Lean" ],
-      p [ "Pages are typed HTML values, so bad nesting is a compile error. The directory is parsed from the ",
+      p [ "Yes, really. Pages are typed HTML values, so if I put a ", code [ "<div>" ], " inside a ", code [ "<p>" ],
+          ", it doesn't compile. The directory is parsed from the ",
           a { href := listUrl } [ "awesome-lean" ],
-          " readme with a Markdown parser proved to produce well-formed HTML, and search streams results over server-sent events with Datastar." ]
+          " readme with a Markdown parser that is proved to produce well-formed HTML. Search streams results from the server with Datastar, so there's no frontend build step and no client-side state to manage." ],
+      p [ "I think that's a pretty good demo of what Lean can do outside of math. ",
+          a { href := sourceUrl } [ "The code is open source" ], ", if you want to see how it's done." ]
+    ] { class_ := "about" },
+    section_ [
+      h2 [ "Who's behind this" ],
+      p [ "Hi, I'm ", a { href := "https://valentin.wiki" } [ "Valentin" ],
+          ". I made ", a { href := "https://github.com/saviorand/lightbug_http" } [ "Lightbug" ],
+          ", the first HTTP framework for Mojo, and ", a { href := "https://github.com/saviorand/datastar-lean" } [ "datastar-lean" ],
+          ". I'm collecting what I learn about writing real software in Lean here. Hit me up on ",
+          a { href := "https://bsky.app/profile/a2svior.bsky.social" } [ "Bluesky" ], " or on the ",
+          a { href := "https://leanprover.zulipchat.com/" } [ "Lean Zulip" ], " if you have questions or ideas." ]
     ] { class_ := "about" }
   ]
 
@@ -158,7 +177,7 @@ def awesomePage (site : Awesome) (interactive : Bool) : String :=
     ] ++ site.intro.toList.map (fun para => p (inlines para)) ++ [
       p [ (s!"{site.entryCount} entries, curated in the " : Node .phrasing),
           a { href := listUrl } [ "awesome-lean" ],
-          " repository. Suggest additions there." ] { class_ := "meta" }
+          " repo. Missing something? Open a PR there, and it shows up here too." ] { class_ := "meta" }
     ]) { class_ := "hero" }
   ] ++ (if interactive then [searchBox] else []) ++ [
     categoryNav site,
@@ -194,7 +213,8 @@ def categoryPage (site : Awesome) (c : Category) (interactive : Bool) : String :
 def notFoundPage (interactive : Bool) : String :=
   layout "Not found: Leangineering" "Page not found." (interactive := interactive) [
     h1 [ "Not found" ],
-    p [ "There's nothing here. Try the ", a { href := "/awesome" } [ "directory" ], "." ]
+    p [ "Nothing here. Maybe I haven't written it yet. In the meantime, the ",
+        a { href := "/awesome" } [ "directory" ], " has 300+ things to look at." ]
   ]
 
 end Leangineering.Views
