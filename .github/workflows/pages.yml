@@ -1,0 +1,69 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # Rebuild daily so the directory picks up changes to awesome-lean.
+  schedule:
+    - cron: "17 5 * * *"
+  # awesome-lean can trigger a rebuild on push with a `repository_dispatch` event.
+  repository_dispatch:
+    types: [awesome-lean-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Lake packages and build
+        uses: actions/cache@v4
+        with:
+          path: .lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-${{ hashFiles('**/*.lean') }}
+          restore-keys: |
+            lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lake-manifest.json') }}-
+
+      - name: Build
+        run: lake build
+
+      - name: Pull the latest awesome-lean list
+        run: scripts/sync-awesome.sh
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - name: Generate the static site
+        env:
+          # "/" with a custom domain, "/<repo>/" on <user>.github.io
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+        run: .lake/build/bin/leangineering build dist
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

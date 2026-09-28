@@ -2,7 +2,8 @@ import Leangineering
 
 /-!
     leangineering [serve]      # http://127.0.0.1:8080 (set PORT, and HOST=0.0.0.0 to listen publicly)
-    leangineering build [dir]  # static site in `dir` (default `dist`), without search
+    leangineering build [dir]  # static site in `dir` (default `dist`), searched in the browser
+                               # set BASE_PATH=/leangineering/ to host under a subpath
 
 Both read `data/awesome-lean.md` and `static/site.css` from the working directory.
 Run `scripts/sync-awesome.sh` to pull the latest list.
@@ -20,13 +21,18 @@ def writePage (dir : System.FilePath) (path : String) (content : String) : IO Un
   IO.FS.writeFile file content
 
 def build (site : Awesome) (css : String) (dir : System.FilePath) : IO Unit := do
-  writePage dir "index.html" (Views.homePage site false)
-  writePage dir "awesome/index.html" (Views.awesomePage site false)
+  let base := (← IO.getEnv "BASE_PATH").getD "/"
+  let mode : Views.Mode := { interactive := false, base := if base.endsWith "/" then base else base ++ "/" }
+  writePage dir "index.html" (Views.homePage site mode)
+  writePage dir "awesome/index.html" (Views.awesomePage site mode)
   for c in site.categories do
-    writePage dir s!"awesome/{c.slug}/index.html" (Views.categoryPage site c false)
-  writePage dir "404.html" (Views.notFoundPage false)
+    writePage dir s!"awesome/{c.slug}/index.html" (Views.categoryPage site c mode)
+  writePage dir "404.html" (Views.notFoundPage mode)
   writePage dir "static/site.css" css
-  IO.println s!"Wrote {site.categories.size + 3} pages to {dir}"
+  writePage dir "static/search.js" (← IO.FS.readFile "static/search.js")
+  -- GitHub Pages: serve files as they are, without Jekyll.
+  writePage dir ".nojekyll" ""
+  IO.println s!"Wrote {site.categories.size + 3} pages to {dir} (base {mode.base})"
 
 def serve (site : Awesome) (css : String) : IO Unit := Async.block do
   let port := ((← IO.getEnv "PORT").bind String.toNat?).getD 8080

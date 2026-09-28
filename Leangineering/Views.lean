@@ -9,8 +9,11 @@ Every page is a typed `Html.Node` tree, so markup nesting is checked by the comp
 is escaped. Entry descriptions come from the readme's Markdown and are rendered by
 `CommonMark.inlineListNodes`, which also produces `Html.Node`s, so no raw HTML is involved.
 
-`interactive` is true when a server is behind the page. Static builds leave out server-driven
-features like search.
+`Mode` says whether a server is behind the page and where the site is mounted. With a server,
+search streams results over SSE. In a static build, every entry carries its search text and
+Datastar filters in the browser, with the matching in `static/search.js`. Internal links are
+relative and resolved by a `<base>` tag, so a static build also works under a subpath like
+`/leangineering/` on GitHub Pages.
 
 The design is a maths paper: Computer Modern, black on white, numbered sections, a table of
 contents, and a theorem whose proof is Lean's own infoview.
@@ -35,31 +38,41 @@ def favicon : String :=
 def inlines (content : List CommonMark.Inline) : List (Node .phrasing) :=
   CommonMark.inlineListNodes content
 
-def categoryHref (c : Category) : String := s!"/awesome/{c.slug}"
+structure Mode where
+  /-- A server is behind the page, so search goes over SSE. -/
+  interactive : Bool
+  /-- Where the site is mounted, with a trailing slash. -/
+  base : String := "/"
+
+def Mode.server : Mode := { interactive := true }
+
+def categoryHref (c : Category) : String := s!"awesome/{c.slug}"
 
 /-- The category's section number, from 1. Stable under search filtering. -/
 def sectionNumber (site : Awesome) (c : Category) : Nat :=
   (site.categories.findIdx? (·.slug == c.slug)).getD 0 + 1
 
 def layout (pageTitle description : String) (content : List (Node .flow))
-    (interactive : Bool) : String :=
+    (mode : Mode) : String :=
   document (lang := "en") [
     head ([
       meta_ [("charset", "utf-8")],
+      base { href := mode.base },
       meta_ [("name", "viewport"), ("content", "width=device-width, initial-scale=1")],
       title pageTitle,
       meta_ [("name", "description"), ("content", description)],
       link { rel := "stylesheet", href := cmuSerifCss },
       link { rel := "stylesheet", href := monoCss },
-      link { rel := "stylesheet", href := "/static/site.css" },
+      link { rel := "stylesheet", href := "static/site.css" },
       link { rel := "icon", href := favicon }
-    ] ++ (if interactive then [script { src := datastarJs } [("type", "module")]] else [])),
+    ] ++ (if mode.interactive then [] else [script { src := "static/search.js" }]) ++
+      [script { src := datastarJs } [("type", "module")]]),
     body [
       header [
         nav [
-          a { href := "/", class_ := "brand" } [ "Leangineering" ],
+          a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
-            a { href := "/awesome" } [ "Directory" ],
+            a { href := "awesome" } [ "Directory" ],
             a { href := sourceUrl } [ "Source" ]
           ] { class_ := "nav-links" }
         ]
@@ -121,27 +134,34 @@ def infoview : Node .flow :=
 
 /-! ## Directory -/
 
-def entryItem (e : Entry) : Node .listItem :=
+/-- Attributes that let Datastar hide an element whose search text doesn't match `$q`. -/
+def filterAttrs (texts : List String) : List (String × String) :=
+  [("data-s", "\n".intercalate texts), ("data-show", "window.lgMatchAny($q, el.dataset.s)")]
+
+def entryItem (c : Category) (filter : Bool) (e : Entry) : Node .listItem :=
   li [
     a { href := e.url, class_ := "entry-name" } [ (e.name : Node .phrasing) ],
     span (inlines e.description) { class_ := "entry-desc" },
     match e.githubRepo? with
     | some repo => span [ (repo : Node .phrasing) ] { class_ := "entry-repo" }
     | none => span [] { class_ := "entry-repo" }
-  ] { class_ := "entry" }
+  ] { class_ := "entry" } (if filter then filterAttrs [e.searchText c] else [])
 
-def groupNodes (g : Group) : List (Node .flow) :=
-  (match g.label with
-   | some label => [h3 [ (label : Node .phrasing) ] { class_ := "group-label" }]
-   | none => []) ++
-  [ul (g.entries.toList.map entryItem) { class_ := "entries" }]
+def groupNodes (c : Category) (filter : Bool) (g : Group) : List (Node .flow) :=
+  [div ((match g.label with
+         | some label => [h3 [ (label : Node .phrasing) ] { class_ := "group-label" }]
+         | none => []) ++
+        [ul (g.entries.toList.map (entryItem c filter)) { class_ := "entries" }])
+    { class_ := "group" }
+    (if filter then filterAttrs (g.entries.toList.map (·.searchText c)) else [])]
 
-def categorySection (site : Awesome) (c : Category) : Node .flow :=
+def categorySection (site : Awesome) (filter : Bool) (c : Category) : Node .flow :=
   section_ ([
     sectionHeading (sectionNumber site c) [
       a { href := categoryHref c } [ (c.title : Node .phrasing) ],
       span [ (toString c.entryCount : Node .phrasing) ] { class_ := "count" } ]
-  ] ++ c.groups.toList.flatMap groupNodes) { id := c.slug, class_ := "category" }
+  ] ++ c.groups.toList.flatMap (groupNodes c filter)) { id := c.slug, class_ := "category" }
+    (if filter then filterAttrs (c.entries.toList.map (·.searchText c)) else [])
 
 /-- A table of contents with dot leaders; entry counts stand in for page numbers.
 Hidden while a search is active, so results sit right under the search box. -/
@@ -157,10 +177,11 @@ def contents (site : Awesome) : Node .flow :=
       { class_ := "toc-list" }
   ] { class_ := "toc" } [("data-show", "!$q")]
 
-def results (site : Awesome) (query : String) : Node .flow :=
+/-- The directory body. `query` is the server-side search; `filter` adds client-side filtering. -/
+def results (site : Awesome) (query : String) (filter : Bool := false) : Node .flow :=
   let q := query.trimAscii.toString
   if q.isEmpty then
-    div (site.categories.toList.map (categorySection site)) { id := "results" }
+    div (site.categories.toList.map (categorySection site filter)) { id := "results" }
   else
     let found := site.search q
     let n := found.foldl (· + ·.entryCount) 0
@@ -175,25 +196,28 @@ def results (site : Awesome) (query : String) : Node .flow :=
         p [ span [ "⊢" ] { class_ := "turnstile" },
             (s!" {n} {if n == 1 then "match" else "matches"} for “{q}”" : Node .phrasing) ]
           { class_ := "result-summary" }
-      ] ++ found.toList.map (categorySection site)) { id := "results" }
+      ] ++ found.toList.map (categorySection site false)) { id := "results" }
 
-def searchBox : Node .flow :=
-  div [
-    label [
+def searchBox (mode : Mode) : Node .flow :=
+  let serverSearch := [("data-on:input__debounce.150ms", "@get('/awesome/search')")]
+  let field : Node .flow := label [
       span [ "#find" ] { class_ := "search-cmd" },
       input { type := "search", placeholder := "postgres, ffi, parser…", class_ := "search" }
-        [ ("aria-label", "Search the directory"),
-          ("autocomplete", "off"),
-          ("data-bind:q", ""),
-          ("data-on:input__debounce.150ms", "@get('/awesome/search')") ]
+        ([ ("aria-label", "Search the directory"),
+           ("autocomplete", "off"),
+           ("data-bind:q", "") ] ++ (if mode.interactive then serverSearch else []))
     ] { class_ := "search-field" }
-  ] { class_ := "search-box" }
+  div ([field] ++ (if mode.interactive then [] else
+    -- The static build's stand-in for the server's `⊢ N matches` line.
+    [p [] { class_ := "result-summary" }
+       [("data-show", "$q.trim() != ''"), ("data-text", "window.lgSummary($q)")]]))
+    { class_ := "search-box" }
 
 /-! ## Pages -/
 
-def homePage (site : Awesome) (interactive : Bool) : String :=
+def homePage (site : Awesome) (mode : Mode) : String :=
   layout "Leangineering: Lean 4 for software engineers"
-    "A community and learning resource for software engineers using Lean 4." (interactive := interactive) [
+    "A community and learning resource for software engineers using Lean 4." (mode := mode) [
     div [
       h1 [ "Lean 4 for Software Engineers" ],
       p [ a { href := "https://valentin.wiki" } [ "Valentin Erokhin" ] ] { class_ := "author" },
@@ -207,7 +231,7 @@ def homePage (site : Awesome) (interactive : Bool) : String :=
       sectionHeading 1 [ "The directory" ],
       p [ (s!"Awesome Lean collects {site.entryCount} libraries, tools and projects for building software in Lean, in {site.categories.size} sections: web servers, databases, FFI, parsers, and more. It's searchable, and it's generated from the " : Node .phrasing),
           a { href := listUrl } [ "awesome-lean" ], " list, so a PR there shows up here too." ],
-      p [ a { href := "/awesome", class_ := "button" } [ "Browse the directory" ] ]
+      p [ a { href := "awesome", class_ := "button" } [ "Browse the directory" ] ]
     ],
     section_ [
       sectionHeading 2 [ "Guides" ],
@@ -244,10 +268,10 @@ def homePage (site : Awesome) (interactive : Bool) : String :=
     ]
   ]
 
-def awesomePage (site : Awesome) (interactive : Bool) : String :=
+def awesomePage (site : Awesome) (mode : Mode) : String :=
   layout "Awesome Lean: libraries and tools for Lean 4"
     s!"A curated directory of {site.entryCount} Lean 4 libraries, tools and projects for programmers."
-    (interactive := interactive) ([
+    (mode := mode) ([
     div [
       h1 [ "Awesome Lean" ],
       p (inlines site.tagline) { class_ := "venue" }
@@ -259,29 +283,30 @@ def awesomePage (site : Awesome) (interactive : Bool) : String :=
           a { href := listUrl } [ "awesome-lean" ],
           " repo. Missing something? Open a PR there, and it shows up here too." ]
     ]) { class_ := "abstract" }
-  ] ++ (if interactive then [searchBox] else []) ++ [
+  ] ++ [
+    searchBox mode,
     contents site,
-    results site ""
+    results site "" (filter := !mode.interactive)
   ])
 
-def categoryPage (site : Awesome) (c : Category) (interactive : Bool) : String :=
+def categoryPage (site : Awesome) (c : Category) (mode : Mode) : String :=
   let idx := (site.categories.findIdx? (·.slug == c.slug)).getD 0
   let prev := if idx == 0 then none else site.categories[idx - 1]?
   let next := site.categories[idx + 1]?
   let crumb : List (Node .phrasing) :=
-    [a { href := "/awesome" } [ "Awesome Lean" ]] ++
+    [a { href := "awesome" } [ "Awesome Lean" ]] ++
     (match c.parent with
      | some parent => [(s!" / {parent}" : Node .phrasing)]
      | none => [])
   layout s!"{c.title}: Awesome Lean"
     s!"{c.entryCount} Lean 4 projects in {c.title}, from the Awesome Lean directory."
-    (interactive := interactive) ([
+    (mode := mode) ([
     p crumb { class_ := "crumb" },
     h1 [ span [ (s!"{sectionNumber site c}" : Node .phrasing) ] { class_ := "sec-num" },
          (c.title : Node .phrasing) ] { class_ := "category-title" },
     p [ (s!"{c.entryCount} entries" : Node .phrasing) ] { class_ := "venue" }
   ] ++ c.intro.toList.map (fun para => p (inlines para)) ++
-    c.groups.toList.flatMap groupNodes ++ [
+    c.groups.toList.flatMap (groupNodes c false) ++ [
     nav [
       match prev with
       | some p' => a { href := categoryHref p' } [ (s!"← §{idx} {p'.title}" : Node .phrasing) ]
@@ -292,13 +317,13 @@ def categoryPage (site : Awesome) (c : Category) (interactive : Bool) : String :
     ] { class_ := "pager" }
   ])
 
-def notFoundPage (interactive : Bool) : String :=
-  layout "Not found: Leangineering" "Page not found." (interactive := interactive) [
+def notFoundPage (mode : Mode) : String :=
+  layout "Not found: Leangineering" "Page not found." (mode := mode) [
     div [
       p [ "error: unknown identifier ‘page’" ] { class_ := "error-line" },
       h1 [ "Not found" ],
       p [ "Nothing here. Maybe I haven't written it yet. In the meantime, the ",
-          a { href := "/awesome" } [ "directory" ], " has 300+ things to look at." ]
+          a { href := "awesome" } [ "directory" ], " has 300+ things to look at." ]
     ] { class_ := "title-block" }
   ]
 
