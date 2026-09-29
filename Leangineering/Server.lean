@@ -28,14 +28,14 @@ def searchHandler (site : Awesome) (req : Request Body.Stream) : ContextAsync (R
   | .ok { q } =>
     return ← sseResponse fun sse => sse.patchElements (Views.results site q).render
 
-def app (site : Awesome) (css : String) : StatelessHandler :=
-  let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage .server)
-  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site .server)),
-    .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site .server)),
+def app (site : Awesome) (css : String) (mode : Views.Mode) : StatelessHandler :=
+  let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage mode)
+  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site mode)),
+    .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site mode)),
     .get Site.patterns.search (searchHandler site),
     .get Site.patterns.category (fun slug req =>
       match site.find? slug with
-      | some c => Response.ok.html (Views.categoryPage site c .server)
+      | some c => Response.ok.html (Views.categoryPage site c mode)
       | none => notFound req),
     .get Site.patterns.css (fun _ =>
       Response.ok |>.header! "Content-Type" "text/css; charset=utf-8" |>.fromBytes css.toUTF8) ]

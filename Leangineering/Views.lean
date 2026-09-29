@@ -32,9 +32,11 @@ def cmuSerifCss : String := "https://cdn.jsdelivr.net/npm/computer-modern@0.1.3/
 def monoCss : String :=
   "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
 
-/-- A black "∀" on white, inlined so it needs no route or file. -/
-def favicon : String :=
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111'/%3E%3Ctext x='16' y='24' font-size='22' text-anchor='middle' fill='%23fff' font-family='Georgia,serif'%3E%E2%88%80%3C/text%3E%3C/svg%3E"
+/-- An SVG as a `data:` URI, escaping only what a URI or a quoted attribute can't hold. -/
+def svgDataUri (svg : String) : String :=
+  "data:image/svg+xml," ++ String.join (svg.toList.map fun
+    | '%' => "%25" | '#' => "%23" | '<' => "%3C" | '>' => "%3E"
+    | '"' => "'" | ' ' => "%20" | '\n' => "" | c => c.toString)
 
 def inlines (content : List CommonMark.Inline) : List (Node .phrasing) :=
   CommonMark.inlineListNodes content
@@ -44,6 +46,8 @@ structure Mode where
   interactive : Bool
   /-- Where the site is mounted, with a trailing slash. -/
   base : String := "/"
+  /-- The logo as a `data:` URI (see `svgDataUri`), so the favicon needs no route or file. -/
+  favicon : String := ""
 
 def Mode.server : Mode := { interactive := true }
 
@@ -64,10 +68,10 @@ def layout (pageTitle description : String) (content : List (Node .flow))
       meta_ [("name", "description"), ("content", description)],
       link { rel := "stylesheet", href := cmuSerifCss },
       link { rel := "stylesheet", href := monoCss },
-      link { rel := "stylesheet", href := "static/site.css" },
-      link { rel := "icon", href := favicon }
-    ] ++ (if mode.interactive then [] else [script { src := "static/search.js" }]) ++
-      [script { src := datastarJs } [("type", "module")]]),
+      link { rel := "stylesheet", href := "static/site.css" }
+    ] ++ (if mode.favicon.isEmpty then [] else [link { rel := "icon", href := mode.favicon }])
+      ++ (if mode.interactive then [] else [script { src := "static/search.js" }])
+      ++ [script { src := datastarJs } [("type", "module")]]),
     body [
       header [
         nav [

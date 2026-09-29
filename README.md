@@ -33,7 +33,7 @@ BASE_PATH=/leangineering/ .lake/build/bin/leangineering build dist   # hosted un
 
 With a server, search runs in Lean and streams results over SSE. The static build filters in the browser instead, with Datastar and `static/search.js`.
 
-Both modes read `data/awesome-lean.md` and `static/site.css` from the working directory. To pull the latest list:
+Both modes read `data/awesome-lean.md`, `static/site.css` and `brand/logo.svg` from the working directory. To pull the latest list:
 
 ```sh
 scripts/sync-awesome.sh
@@ -49,3 +49,4 @@ scripts/sync-awesome.sh
 - `Leangineering/Views.lean`: page templates.
 - `Leangineering/Server.lean`: route table and handlers, including the Datastar search endpoint.
 - `Main.lean`: the `serve` and `build` commands.
+- `brand/`: the logo. `logo.svg` is the source, read at startup and inlined as the favicon; `export/` has PNGs from 16 to 2048px, and `discord-icon.png` is the 512px Discord upload.
