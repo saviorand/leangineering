@@ -25,6 +25,7 @@ open Html
 
 def sourceUrl : String := "https://github.com/saviorand/leangineering"
 def listUrl : String := "https://github.com/saviorand/awesome-lean"
+def discordUrl : String := "https://discord.gg/ACKNs7ZJPj"
 def datastarJs : String :=
   "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js"
 def cmuSerifCss : String := "https://cdn.jsdelivr.net/npm/computer-modern@0.1.3/cmu-serif.css"
@@ -73,6 +74,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
             a { href := "awesome" } [ "Directory" ],
+            a { href := discordUrl } [ "Discord" ],
             a { href := sourceUrl } [ "Source" ]
           ] { class_ := "nav-links" }
         ]
@@ -221,7 +223,7 @@ def homePage (site : Awesome) (mode : Mode) : String :=
     div [
       h1 [ "Lean 4 for Software Engineers" ],
       p [ a { href := "https://valentin.wiki" } [ "Valentin Erokhin" ] ] { class_ := "author" },
-      p [ "leangineer.com" ] { class_ := "venue" }
+      p [ "leangineer.com · ", a { href := discordUrl } [ "Join the Discord" ] ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [
       h2 [ "Abstract" ] { class_ := "abstract-title" },

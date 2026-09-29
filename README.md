@@ -1,5 +1,7 @@
 # leangineering
 
+[Join the Leangineer Discord](https://discord.gg/ACKNs7ZJPj) to talk about building software in Lean.
+
 Source for [leangineer.com](https://leangineer.com), a community and learning resource for software engineers using Lean 4. The site is written in Lean.
 
 ## What's here
