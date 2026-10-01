@@ -90,7 +90,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           a { href := "https://github.com/paulbutcher/lean-html" } [ "lean-html" ], ", ",
           a { href := "https://github.com/paulbutcher/lean-routing" } [ "lean-routing" ], ", ",
           a { href := "https://github.com/paulbutcher/lean-markdown" } [ "lean-markdown" ], " and ",
-          a { href := "https://github.com/saviorand/datastar-lean" } [ "datastar-lean" ], ". Set in Computer Modern. ",
+          a { href := "https://github.com/carlohamalainen/datastar-lean" } [ "datastar-lean" ], ". Set in Computer Modern. ",
           a { href := sourceUrl } [ "Source on GitHub" ], "."
         ]
       ] { class_ := "site-footer" }

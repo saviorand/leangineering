@@ -26,7 +26,7 @@ def searchHandler (site : Awesome) (req : Request Body.Stream) : ContextAsync (R
   match ← readSignals (α := SearchSignals) req with
   | .error e => return ← Response.badRequest |>.text e
   | .ok { q } =>
-    return ← sseResponse fun sse => sse.patchElements (Views.results site q).render
+    sseResponse fun sse => sse.send <| patchElements (Views.results site q).render
 
 def app (site : Awesome) (css : String) (mode : Views.Mode) : StatelessHandler :=
   let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage mode)

@@ -19,8 +19,8 @@ rev = "v0.7.1"
 
 [[require]]
 name = "datastar"
-git = "https://github.com/saviorand/datastar-lean"
-rev = "v0.2.0"
+git = "https://github.com/carlohamalainen/datastar-lean"
+rev = "055f9f275776f89f4e728fe72f54570c36cfeec0"
 
 [[lean_lib]]
 name = "Leangineering"
