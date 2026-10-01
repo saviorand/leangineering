@@ -39,6 +39,19 @@ Both modes read `data/awesome-lean.md`, `static/site.css` and `brand/logo.svg` f
 scripts/sync-awesome.sh
 ```
 
+
+## End-to-end tests
+
+Playwright drives Chromium against both the server (`leangineering serve`, port 3201) and the
+static build (served on port 3202), running the same tests in each. It starts both itself:
+
+```sh
+cd e2e
+npm ci
+npx playwright install chromium
+npx playwright test
+```
+
 ## Deploying
 
 `.github/workflows/pages.yml` builds the static site and deploys it to GitHub Pages on every push, daily, and when awesome-lean sends a `repository_dispatch` of type `awesome-lean-updated`. It pulls the latest list before building.
