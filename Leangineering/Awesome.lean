@@ -1,9 +1,9 @@
 import CommonMark
 
 /-!
-# The awesome-lean list as data
+# The awesome-lean-programming list as data
 
-`parse` turns the awesome-lean readme into categories and entries. The readme stays the single
+`parse` turns the awesome-lean-programming readme into categories and entries. The readme stays the single
 source of truth: this module only reads the structure the awesome format already has.
 
 - `##` headings are categories, and `###` headings are subcategories of the `##` above them.

@@ -6,10 +6,10 @@ Source for [leangineer.com](https://leangineer.com), a community and learning re
 
 ## What's here
 
-- `/awesome`: the [awesome-lean](https://github.com/saviorand/awesome-lean) list as a browsable directory, with a page per category and live search.
+- `/awesome`: the [awesome-lean-programming](https://github.com/saviorand/awesome-lean-programming) list as a browsable directory, with a page per category and live search.
 - Guides are coming next.
 
-The directory is generated from the awesome-lean readme, which stays the single source of truth. To change an entry, open a pull request there.
+The directory is generated from the awesome-lean-programming readme, which stays the single source of truth. To change an entry, open a pull request there.
 
 ## Stack
 
@@ -54,7 +54,7 @@ npx playwright test
 
 ## Deploying
 
-`.github/workflows/pages.yml` builds the static site and deploys it to GitHub Pages on every push, daily, and when awesome-lean sends a `repository_dispatch` of type `awesome-lean-updated`. It pulls the latest list before building.
+`.github/workflows/pages.yml` builds the static site and deploys it to GitHub Pages on every push, daily, and when awesome-lean-programming sends a `repository_dispatch` of type `awesome-lean-updated`. It pulls the latest list before building.
 
 ## Layout
 

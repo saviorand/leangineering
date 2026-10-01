@@ -3,10 +3,10 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # Rebuild daily so the directory picks up changes to awesome-lean.
+  # Rebuild daily so the directory picks up changes to awesome-lean-programming.
   schedule:
     - cron: "17 5 * * *"
-  # awesome-lean can trigger a rebuild on push with a `repository_dispatch` event.
+  # awesome-lean-programming can trigger a rebuild on push with a `repository_dispatch` event.
   repository_dispatch:
     types: [awesome-lean-updated]
   workflow_dispatch:
@@ -49,7 +49,7 @@ jobs:
       - name: Build
         run: lake build
 
-      - name: Pull the latest awesome-lean list
+      - name: Pull the latest awesome-lean-programming list
         run: scripts/sync-awesome.sh
 
       - id: pages

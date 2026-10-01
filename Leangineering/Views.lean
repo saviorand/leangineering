@@ -24,7 +24,7 @@ namespace Leangineering.Views
 open Html
 
 def sourceUrl : String := "https://github.com/saviorand/leangineering"
-def listUrl : String := "https://github.com/saviorand/awesome-lean"
+def listUrl : String := "https://github.com/saviorand/awesome-lean-programming"
 def discordUrl : String := "https://discord.gg/ACKNs7ZJPj"
 def datastarJs : String :=
   "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js"
@@ -235,8 +235,8 @@ def homePage (site : Awesome) (mode : Mode) : String :=
     ] { class_ := "abstract" },
     section_ [
       sectionHeading 1 [ "The directory" ],
-      p [ (s!"Awesome Lean collects {site.entryCount} libraries, tools and projects for building software in Lean, in {site.categories.size} sections: web servers, databases, FFI, parsers, and more. It's searchable, and it's generated from the " : Node .phrasing),
-          a { href := listUrl } [ "awesome-lean" ], " list, so a PR there shows up here too." ],
+      p [ (s!"Awesome Lean Programming collects {site.entryCount} libraries, tools and projects for building software in Lean, in {site.categories.size} sections: web servers, databases, FFI, parsers, and more. It's searchable, and it's generated from the " : Node .phrasing),
+          a { href := listUrl } [ "awesome-lean-programming" ], " list, so a PR there shows up here too." ],
       p [ a { href := "awesome", class_ := "button" } [ "Browse the directory" ] ]
     ],
     section_ [
@@ -252,7 +252,7 @@ def homePage (site : Awesome) (mode : Mode) : String :=
       ] { class_ := "theorem" },
       div [
         p [ em [ "Proof." ], " Yes, really. Pages are built with lean-html, so if I put a ", code [ "<div>" ],
-            " inside a ", code [ "<p>" ], ", it doesn't compile. The directory is parsed from the awesome-lean readme with a Markdown parser that is proved to produce well-formed HTML. Search streams results from the server with Datastar, so there's no frontend build step and no client-side state to manage. The routes are in Figure 1; the infoview agrees." ],
+            " inside a ", code [ "<p>" ], ", it doesn't compile. The directory is parsed from the awesome-lean-programming readme with a Markdown parser that is proved to produce well-formed HTML. Search streams results from the server with Datastar, so there's no frontend build step and no client-side state to manage. The routes are in Figure 1; the infoview agrees." ],
         figure [
           div [ editorPane, infoview ] { class_ := "panes" },
           figcaption [ p [ span [ "Figure 1." ] { class_ := "fig-label" },
@@ -275,18 +275,18 @@ def homePage (site : Awesome) (mode : Mode) : String :=
   ]
 
 def awesomePage (site : Awesome) (mode : Mode) : String :=
-  layout "Awesome Lean: libraries and tools for Lean 4"
+  layout "Awesome Lean Programming: libraries and tools for Lean 4"
     s!"A curated directory of {site.entryCount} Lean 4 libraries, tools and projects for programmers."
     (mode := mode) ([
     div [
-      h1 [ "Awesome Lean" ],
+      h1 [ "Awesome Lean Programming" ],
       p (inlines site.tagline) { class_ := "venue" }
     ] { class_ := "title-block" },
     div ([
       h2 [ "Abstract" ] { class_ := "abstract-title" }
     ] ++ site.intro.toList.map (fun para => p (inlines para)) ++ [
       p [ (s!"{site.entryCount} entries, curated in the " : Node .phrasing),
-          a { href := listUrl } [ "awesome-lean" ],
+          a { href := listUrl } [ "awesome-lean-programming" ],
           " repo. Missing something? Open a PR there, and it shows up here too." ]
     ]) { class_ := "abstract" }
   ] ++ [
@@ -300,12 +300,12 @@ def categoryPage (site : Awesome) (c : Category) (mode : Mode) : String :=
   let prev := if idx == 0 then none else site.categories[idx - 1]?
   let next := site.categories[idx + 1]?
   let crumb : List (Node .phrasing) :=
-    [a { href := "awesome" } [ "Awesome Lean" ]] ++
+    [a { href := "awesome" } [ "Awesome Lean Programming" ]] ++
     (match c.parent with
      | some parent => [(s!" / {parent}" : Node .phrasing)]
      | none => [])
-  layout s!"{c.title}: Awesome Lean"
-    s!"{c.entryCount} Lean 4 projects in {c.title}, from the Awesome Lean directory."
+  layout s!"{c.title}: Awesome Lean Programming"
+    s!"{c.entryCount} Lean 4 projects in {c.title}, from the Awesome Lean Programming directory."
     (mode := mode) ([
     p crumb { class_ := "crumb" },
     h1 [ span [ (s!"{sectionNumber site c}" : Node .phrasing) ] { class_ := "sec-num" },

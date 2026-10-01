@@ -1,4 +1,4 @@
-# Awesome Lean [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
+# Awesome Lean Programming [![Awesome](https://awesome.re/badge.svg)](https://awesome.re)
 
 > Dependently typed functional programming language and interactive theorem prover.
 
@@ -201,12 +201,13 @@ Core projects maintained by the Lean FRO and the Lean community.
 **Servers & Frameworks**
 - [LeanIO](https://github.com/ecyrbe/leanio) - HTTP router for `Std.Http` with compile-time checked routes, JSON handling and middleware.
 - [LeanTEA](https://github.com/Verilean/lean-tea) - Full-stack web and TUI framework based on The Elm Architecture.
+- [Qed](https://github.com/JacobAsmuth/qed) - Frontend framework with JSX-style components, typed events and state invariants proved at compile time.
 - [lean-html](https://github.com/paulbutcher/lean-html) - Typed HTML5 ([lean-htmx](https://github.com/paulbutcher/lean-htmx) adds typed `hx-*` attributes).
 - [lean-routing](https://github.com/paulbutcher/lean-routing) - Typed router and route table.
 - [lean-middleware](https://github.com/paulbutcher/lean-middleware) - Sessions, sealed cookie store, anti-forgery, static files and request tracing.
 - [lean-forms](https://github.com/paulbutcher/lean-forms) - Web forms library.
 - [lean-authentication](https://github.com/paulbutcher/lean-authentication) - Magic-link authentication, sessions and rate limiting.
-- [datastar-lean](https://github.com/saviorand/datastar-lean) - Datastar SDK for Lean.
+- [datastar-lean](https://github.com/carlohamalainen/datastar-lean) - Datastar SDK for real-time hypermedia apps over server-sent events, with optional compression.
 - [LeanRPC](https://github.com/oOo0oOo/LeanRPC) - Expose Lean functions as JSON-RPC endpoints over HTTP with `@[rpc]`.
 - [lithe](https://github.com/JoshuaPurtell/lithe) - Simple web service framework.
 
@@ -250,7 +251,11 @@ Core projects maintained by the Lean FRO and the Lean community.
 - [Blake3](https://github.com/argumentcomputer/BLAKE3) - Bindings to the BLAKE3 hash function (see also [Blake3Lean4](https://github.com/BuildCoherence/Blake3Lean4), a pure Lean implementation).
 - [OpenSSL.lean](https://github.com/argumentcomputer/OpenSSL.lean) - OpenSSL bindings.
 - [lean-cryptolib](https://github.com/atrieu/lean-cryptolib) - Verified Montgomery and Barrett modular reduction.
-- [lean-zip](https://github.com/kim-em/lean-zip) - Compression library ([blog post: "Why Lean is faster than Rust"](https://kim-em.github.io/blog/2026-7-24-why-lean-is-faster-than-rust/)).
+- [lean-zip](https://github.com/kim-em/lean-zip) - Pure-Lean DEFLATE and zlib with a kernel-checked proof that decompression inverts compression ([blog post: "Why Lean is faster than Rust"](https://kim-em.github.io/blog/2026-7-24-why-lean-is-faster-than-rust/)).
+- [lean-zlib](https://github.com/kim-em/lean-zlib) - Bindings to system zlib for zlib, gzip and raw DEFLATE streams, plus CRC-32 and Adler-32.
+- [lean-zstd](https://github.com/kim-em/lean-zstd) - Zstandard decompression, via C bindings or a pure-Lean implementation with proofs.
+- [lean-archive](https://github.com/kim-em/lean-archive) - Tar and ZIP archives, hardened against hostile input.
+- [lean-brotli](https://github.com/JGalego/lean-brotli) - Brotli bindings with whole-buffer and streaming APIs.
 - [LeanHuffmanCoding](https://github.com/AnirudhG07/LeanHuffmanCoding) - Huffman coding with correctness proofs.
 - [LeanBWT-Bzip2](https://github.com/AnirudhG07/LeanBWT-Bzip2) - bzip2 via the Burrows-Wheeler transform, in pure Lean with proofs.
 
@@ -290,6 +295,7 @@ Core projects maintained by the Lean FRO and the Lean community.
 - [lean-wgpu](https://github.com/Kiiyya/lean-wgpu) - WebGPU bindings via wgpu-native.
 - [Hesper](https://github.com/Verilean/hesper) - Verified GPU programming with type-safe WebGPU shaders.
 - [LeanPlot](https://github.com/alok/LeanPlot) - Plotting with deterministic SVG and PNG backends.
+- [Illuminate](https://github.com/leanprover/illuminate) - Compositional 2D diagrams rendered to SVG, with previews in the infoview (experimental).
 - [vizagrams](https://github.com/arademaker/vizagrams) - Visualization library.
 - [LeanReact](https://github.com/theoriclabs/lean-react) - Write React components in Lean that compile to JavaScript (experimental).
 - [lean4-godot](https://github.com/kiranandcode/lean4-godot) - Experimental bindings to the Godot 4 game engine.
@@ -446,7 +452,7 @@ Tactics and solver integrations that are useful when proving properties of progr
 - [thales](https://github.com/jessealama/thales) - TypeScript compiler and JavaScript engine in Lean.
 - [leanexe](https://github.com/jsmorph/leanexe) - Compiler for a Lean dialect that targets verified WebAssembly.
 - [lean2wasm](https://github.com/T-Brick/lean2wasm) - Compile Lean to WebAssembly.
-- [lean-vir](https://github.com/ejgallego/lean-vir) - Proof of concept compiling Lean IR to wasm32-wasi.
+- [lean-vir](https://github.com/ejgallego/lean-vir) - Runs Lean in the browser via Lean's IR interpreter compiled to WebAssembly, with a runtime under 200 KiB (early, Lean FRO).
 - [lean-gccjit](https://github.com/SchrodingerZhu/lean-gccjit) - Bindings to libgccjit, a basis for alternative backends.
 - [QED64](https://github.com/FawadHa1der/QED64) - Lean and Mathlib running in the browser via wasm64.
 - [yatima](https://github.com/argumentcomputer/yatima) - Zero-knowledge Lean 4 compiler and kernel.
@@ -522,6 +528,7 @@ Tactics and solver integrations that are useful when proving properties of progr
 
 - [Lean Zulip](https://leanprover.zulipchat.com/) - Main community chat; see the `#Project announcements`, `#Program verification` and `#lean4` channels.
 - [Lean Community website](https://leanprover-community.github.io/) - Community resources, installation guides and documentation overview.
+- [Leangineer Discord](https://discord.gg/ACKNs7ZJPj) - Chat for software engineers building with Lean, alongside [leangineer.com](https://leangineer.com).
 - [Lean FRO](https://lean-lang.org/fro/) - The Focused Research Organization developing Lean, including [roadmaps](https://lean-lang.org/fro/roadmap/).
 - [Awesome Logic Formalization](https://github.com/FormalizedFormalLogic/awesome-logic-formalization) - Related list about formalized logic.
 
