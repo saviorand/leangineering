@@ -226,7 +226,6 @@ def homePage (site : Awesome) (mode : Mode) : String :=
     "A community and learning resource for software engineers using Lean 4." (mode := mode) [
     div [
       h1 [ "Lean 4 for Software Engineers" ],
-      p [ a { href := "https://valentin.wiki" } [ "Valentin Erokhin" ] ] { class_ := "author" },
       p [ "leangineer.com · ", a { href := discordUrl } [ "Join the Discord" ] ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [

@@ -101,9 +101,6 @@ main { padding: 64px 0 64px; }
 
 .title-block { text-align: center; margin-bottom: 48px; }
 .title-block h1 { font-size: 36px; letter-spacing: -0.01em; margin-bottom: 16px; }
-.author { font-size: 20px; margin: 0 0 4px; }
-.author a { text-decoration: none; }
-.author a:hover { text-decoration: underline; }
 .venue { font-size: 16px; font-style: italic; color: var(--ink-2); margin: 0; }
 .error-line { font: 400 14px var(--mono); color: var(--ink-2); margin-bottom: 24px; }
 
