@@ -9,11 +9,11 @@ namespace Leangineering
 open Std Http Async Server
 open Routing Datastar
 
--- `search` comes before `category`, whose `:slug` would otherwise match "search".
+-- `search` sits outside `/awesome/`, so no category's slug can collide with it.
 route_table Site
   [ home := "/",
     awesome := "/awesome",
-    search := "/awesome/search",
+    search := "/search",
     category := "/awesome/:slug:String",
     css := "/static/site.css" ]
 

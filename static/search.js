@@ -1,8 +1,10 @@
 // Search for the static build. Every entry, group and section carries its lowercased search
 // text in `data-s`, and Datastar re-evaluates these from `data-show` / `data-text` as `$q` changes.
 // The server build doesn't load this: it searches in Lean and streams results over SSE.
+// `words` mirrors `Category.filter`: Lean's `String.toLower` only lowercases ASCII, and the query
+// is split on spaces, so both builds find the same entries.
 (() => {
-  const words = q => (q || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const words = q => (q || "").replace(/[A-Z]/g, c => c.toLowerCase()).split(" ").filter(Boolean);
   const matches = (ws, text) => ws.every(w => text.includes(w));
 
   window.lgMatchAny = (q, texts) => {

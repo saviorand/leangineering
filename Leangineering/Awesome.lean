@@ -6,6 +6,9 @@ import CommonMark
 `parse` turns the awesome-lean-programming readme into categories and entries. The readme stays the single
 source of truth: this module only reads the structure the awesome format already has.
 
+The readme is sanitized before it is read, since anyone can open a PR against it: raw HTML is
+dropped, and a link whose scheme isn't http, https or mailto loses its destination.
+
 - `##` headings are categories, and `###` headings are subcategories of the `##` above them.
 - A paragraph that is entirely bold (`**Games**`) starts a group within a category.
 - Other paragraphs before the first entry are the category's intro.
@@ -132,7 +135,7 @@ private def State.addEntries (st : State) (es : Array Entry) : State :=
 
 def parse (markdown : String) : Awesome := Id.run do
   let mut st : State := {}
-  for block in parseDocument markdown do
+  for block in Document.sanitize (parseDocument markdown) do
     match block with
     | .heading level content =>
       let title := plainTextOfInlines content

@@ -205,7 +205,7 @@ def results (site : Awesome) (query : String) (filter : Bool := false) : Node .f
       ] ++ found.toList.map (categorySection site false)) { id := "results" }
 
 def searchBox (mode : Mode) : Node .flow :=
-  let serverSearch := [("data-on:input__debounce.150ms", "@get('/awesome/search')")]
+  let serverSearch := [("data-on:input__debounce.150ms", "@get('/search')")]
   let field : Node .flow := label [
       span [ "#find" ] { class_ := "search-cmd" },
       input { type := "search", placeholder := "postgres, ffi, parser…", class_ := "search" }
