@@ -21,7 +21,8 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
     },
     {
-      command: "lake exe leangineering build e2e/.dist && python3 -m http.server 3202 -b 127.0.0.1 -d e2e/.dist",
+      // Drafts included, so the blog tests have a post to read in both modes.
+      command: "DRAFTS=1 lake exe leangineering build e2e/.dist && python3 -m http.server 3202 -b 127.0.0.1 -d e2e/.dist",
       cwd: "..",
       url: staticSite,
       reuseExistingServer: !process.env.CI,

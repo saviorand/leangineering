@@ -16,7 +16,7 @@ The directory is generated from the awesome-lean-programming readme, which stays
 - [lean-html](https://github.com/paulbutcher/lean-html): pages are typed HTML values, so invalid nesting is a compile error and all text is escaped.
 - [lean-routing](https://github.com/paulbutcher/lean-routing): typed routes and links.
 - [lean-markdown](https://github.com/paulbutcher/lean-markdown): parses the readme; entry descriptions render to typed HTML nodes, with no raw HTML.
-- [datastar-lean](https://github.com/carlohamalainen/datastar-lean): search streams results to the page over server-sent events.
+- [datastar-lean](https://github.com/starfederation/datastar-lean): search streams results to the page over server-sent events.
 - `Std.Http`: the HTTP server that ships with Lean.
 
 ## Running

@@ -1,13 +1,16 @@
 import Html
 import CommonMark
+import GFMarkdown
 import Leangineering.Awesome
+import Leangineering.Blog
 
 /-!
 # Pages
 
 Every page is a typed `Html.Node` tree, so markup nesting is checked by the compiler and all text
 is escaped. Entry descriptions come from the readme's Markdown and are rendered by
-`CommonMark.inlineListNodes`, which also produces `Html.Node`s, so no raw HTML is involved.
+`CommonMark.inlineListNodes`, which also produces `Html.Node`s, so no raw HTML is involved apart
+from `themeScript`, a constant.
 
 `Mode` says whether a server is behind the page and where the site is mounted. With a server,
 search streams results over SSE. In a static build, every entry carries its search text and
@@ -31,6 +34,21 @@ def datastarJs : String :=
 def cmuSerifCss : String := "https://cdn.jsdelivr.net/npm/computer-modern@0.1.3/cmu-serif.css"
 def monoCss : String :=
   "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+
+/-- Applies the theme the reader picked, if any, before the page is first drawn, so a reader who
+picked the other theme from their system's never sees a flash of it. Without a pick, the
+stylesheet follows the system. A constant, so it goes in with `Node.unsafeRaw`. -/
+def themeScript : String :=
+  "<script>try { var t = localStorage.getItem('theme'); " ++
+  "if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t } catch (e) {}</script>"
+
+/-- The theme button's click: system, then light, then dark, then the system's again. The pick is
+remembered; going back to the system's forgets it. The stylesheet draws the button for each. -/
+def themeToggle : String :=
+  "var d = document.documentElement, t = d.dataset.theme, " ++
+  "n = t === 'light' ? 'dark' : t === 'dark' ? '' : 'light'; " ++
+  "try { if (n) { d.dataset.theme = n; localStorage.setItem('theme', n) } " ++
+  "else { delete d.dataset.theme; localStorage.removeItem('theme') } } catch (e) {}"
 
 /-- An SVG as a `data:` URI, escaping only what a URI or a quoted attribute can't hold. -/
 def svgDataUri (svg : String) : String :=
@@ -62,6 +80,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
   document (lang := "en") [
     head ([
       meta_ [("charset", "utf-8")],
+      Node.unsafeRaw themeScript,
       base { href := mode.base },
       meta_ [("name", "viewport"), ("content", "width=device-width, initial-scale=1")],
       title pageTitle,
@@ -77,9 +96,13 @@ def layout (pageTitle description : String) (content : List (Node .flow))
         nav [
           a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
+            a { href := "blog" } [ "Blog" ],
             a { href := "awesome" } [ "Directory" ],
             a { href := discordUrl } [ "Discord" ],
-            a { href := sourceUrl } [ "Source" ]
+            a { href := sourceUrl } [ "Source" ],
+            button [] { type := "button", class_ := "theme-toggle" }
+              [("aria-label", "Theme: system, light or dark"), ("title", "Theme: system, light or dark"),
+               ("onclick", themeToggle)]
           ] { class_ := "nav-links" }
         ]
       ] { class_ := "site-header" },
@@ -90,7 +113,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           a { href := "https://github.com/paulbutcher/lean-html" } [ "lean-html" ], ", ",
           a { href := "https://github.com/paulbutcher/lean-routing" } [ "lean-routing" ], ", ",
           a { href := "https://github.com/paulbutcher/lean-markdown" } [ "lean-markdown" ], " and ",
-          a { href := "https://github.com/carlohamalainen/datastar-lean" } [ "datastar-lean" ], ". Set in Computer Modern. ",
+          a { href := "https://github.com/starfederation/datastar-lean" } [ "datastar-lean" ], ". Set in Computer Modern. ",
           a { href := sourceUrl } [ "Source on GitHub" ], "."
         ]
       ] { class_ := "site-footer" }
@@ -331,5 +354,242 @@ def notFoundPage (mode : Mode) : String :=
           a { href := "awesome" } [ "directory" ], " has 300+ things to look at." ]
     ] { class_ := "title-block" }
   ]
+
+/-! ## Blog
+
+A post renders as a paper. `##` headings are numbered sections. A paragraph that opens in bold with
+a theorem-like label (`**Lemma 1 (Routing).**`) is set as a theorem, its statement in italics. One
+that opens with `*Proof.*` starts a proof, which runs to the block ending in `∎`. As in a paper,
+the ∎ ends the proof's last line, or stands on a line of its own after a code block. A paragraph holding only an image is a numbered figure, captioned with
+the image's alt text. Lean code blocks get the same keyword, string and comment styles as the home
+page's listing.
+-/
+
+open CommonMark.Parser (RawInline)
+
+def postHref (post : Post) : String := s!"blog/{post.slug}"
+
+def leanKeywords : List String :=
+  ["def", "theorem", "lemma", "inductive", "structure", "class", "instance", "where", "match",
+   "with", "fun", "by", "do", "let", "if", "then", "else", "return", "namespace", "end", "open",
+   "import", "deriving", "abbrev", "route_table"]
+
+def isIdentChar (c : Char) : Bool := c.isAlphanum || c == '_' || c == '.' || c == '?' || c == '!'
+
+/-- Consecutive characters of the same kind, by `p`. -/
+def runs (p : Char → Bool) (cs : List Char) : List (List Char) :=
+  cs.foldr (init := []) fun c acc =>
+    match acc with
+    | (d :: ds) :: rest => if p c == p d then (c :: d :: ds) :: rest else [c] :: acc
+    | _ => [c] :: acc
+
+/-- One line of Lean, with keywords, string literals and a trailing comment marked. -/
+def highlightLine (line : String) : List (Node .phrasing) :=
+  let (source, comment) := match line.splitOn "--" with
+    | first :: rest@(_ :: _) => (first, some ("--" ++ "--".intercalate rest))
+    | _ => (line, none)
+  let segments := source.splitOn "\""
+  let code := segments.zipIdx.flatMap fun (segment, i) =>
+    if i % 2 == 1 then
+      [str ("\"" ++ segment ++ (if i + 1 < segments.length then "\"" else ""))]
+    else (runs isIdentChar segment.toList).map fun run =>
+      let word := String.ofList run
+      if leanKeywords.contains word then kw word else (word : Node .phrasing)
+  code ++ (match comment with | some c => [cm c] | none => [])
+
+def codeBlock (info : Option String) (literal : String) : Node .flow :=
+  let text := (literal.dropEndWhile (· == '\n')).toString
+  let body : List (Node .phrasing) :=
+    if info == some "lean" then ((text.splitOn "\n").map highlightLine).intersperse [("\n" : Node .phrasing)] |>.flatten
+    else [(text : Node .phrasing)]
+  div [ pre body { class_ := "pane-code" } ] { class_ := "pane code-block" }
+
+/-- Straight quotes as curly ones: a quote after a space, a bracket or nothing opens, any other
+closes, so an apostrophe comes out right. Code is left alone, since it never reaches here. -/
+def curlQuotes (s : String) : String :=
+  let opensAfter (prev : Option Char) : Bool := match prev with
+    | none => true
+    | some c => c.isWhitespace || c == '(' || c == '['
+  String.ofList <| (s.toList.foldl (init := ([], none)) fun (out, prev) c =>
+    let c' := match c with
+      | '"' => if opensAfter prev then '“' else '”'
+      | '\'' => if opensAfter prev then '‘' else '’'
+      | c => c
+    (c' :: out, some c)).1.reverse
+
+/-- Inline content, with a link to `#fn-name` set as a superscript note number. -/
+def postInline (post : Post) : RawInline → List (Node .phrasing)
+  | i@(.link dest _ content) =>
+    if dest.startsWith "#fn-" then
+      let name := (dest.drop 4).toString
+      [sup [ a { href := s!"{postHref post}#fn-{name}", id := s!"fnref-{name}" }
+               (GFMarkdown.inlineListNodes content) ] { class_ := "fn-ref" }]
+    else GFMarkdown.inlineNodes i
+  | .text s => [(curlQuotes s : Node .phrasing)]
+  | i => GFMarkdown.inlineNodes i
+
+def postInlines (post : Post) (content : List RawInline) : List (Node .phrasing) :=
+  content.flatMap (postInline post)
+
+def theoremKinds : List String :=
+  ["Theorem", "Lemma", "Definition", "Corollary", "Proposition", "Problem", "Remark"]
+
+/-- `Lemma 1 (Routing).` as `("Lemma 1", some "Routing")`, if it names a theorem-like kind. -/
+def theoremLabel? (bold : String) : Option (String × Option String) :=
+  let s := bold.trimAscii.toString
+  if !s.endsWith "." then none else
+    let s := (s.dropEnd 1).toString
+    let (label, name) := match s.splitOn " (" with
+      | [label, rest] => if rest.endsWith ")" then (label, some (rest.dropEnd 1).toString) else (s, none)
+      | _ => (s, none)
+    if theoremKinds.any (label.startsWith ·) then some (label, name) else none
+
+def trimStart : List RawInline → List RawInline
+  | .text s :: rest => .text s.trimAsciiStart.toString :: rest
+  | content => content
+
+/-- A theorem-like paragraph. Problems and remarks are discussion, so only statements are italic. -/
+def theoremBlock (post : Post) (label : String) (name : Option String)
+    (statement : List RawInline) : Node .flow :=
+  let body := postInlines post (trimStart statement)
+  let italic := !(label.startsWith "Problem" || label.startsWith "Remark")
+  div [
+    p ([ span [ (label : Node .phrasing) ] { class_ := "thm-label" },
+         ((match name with | some n => s!" ({n}). " | none => ". ") : Node .phrasing) ] ++
+       (if italic then [em body] else body))
+  ] { class_ := "theorem" }
+
+/-- The paragraph without a closing `∎`, and whether it had one. -/
+def stripQed (content : List RawInline) : List RawInline × Bool :=
+  match content.getLast? with
+  | some (.text s) =>
+    let t := s.trimAsciiEnd.toString
+    if t.endsWith "∎" then
+      let rest := (t.dropEnd 1).trimAsciiEnd.toString
+      (content.dropLast ++ (if rest.isEmpty then [] else [.text rest]), true)
+    else (content, false)
+  | _ => (content, false)
+
+structure PaperState where
+  sections : Array (Node .flow) := #[]
+  number : Nat := 0
+  heading : Option (List (Node .phrasing)) := none
+  current : Array (Node .flow) := #[]
+  /-- The blocks of an open proof. -/
+  proof : Option (Array (Node .flow)) := none
+  figures : Nat := 0
+
+namespace PaperState
+
+def emit (st : PaperState) (n : Node .flow) : PaperState :=
+  match st.proof with
+  | some blocks => { st with proof := some (blocks.push n) }
+  | none => { st with current := st.current.push n }
+
+/-- Closes the open proof, with a ∎ of its own unless its last paragraph already ends in one. -/
+def closeProof (st : PaperState) (marked := false) : PaperState :=
+  match st.proof with
+  | some blocks =>
+    let blocks := if marked then blocks else blocks.push (p [ "∎" ] { class_ := "qed post-qed" })
+    { st with proof := none, current := st.current.push (div blocks.toList { class_ := "proof" }) }
+  | none => st
+
+def closeSection (st : PaperState) : PaperState :=
+  let st := st.closeProof
+  if st.current.isEmpty && st.heading.isNone then st else
+    let heading := match st.heading with
+      | some h => [sectionHeading st.number h]
+      | none => []
+    { st with sections := st.sections.push (section_ (heading ++ st.current.toList)), current := #[] }
+
+end PaperState
+
+def qedMark : Node .phrasing := span [ "∎" ] { class_ := "qed-mark" }
+
+/-- A proof's paragraph, ending in ∎ if it closes the proof. -/
+def proofParagraph (post : Post) (lead : List (Node .phrasing)) (content : List RawInline)
+    (done : Bool) : Node .flow :=
+  p (lead ++ postInlines post content ++ (if done then [qedMark] else []))
+
+def paperStep (post : Post) (st : PaperState) : GFMarkdown.Block → PaperState
+  | .heading level content =>
+    if level.val ≤ 1 then
+      let st := st.closeSection
+      { st with number := st.number + 1, heading := some (postInlines post content) }
+    else st.emit (GFMarkdown.headingNode level (postInlines post content))
+  | .paragraph content =>
+    if st.proof.isSome then
+      let (content, done) := stripQed content
+      if content.isEmpty then (if done then st.closeProof else st)
+      else
+        let st := st.emit (proofParagraph post [] content done)
+        if done then st.closeProof (marked := true) else st
+    else match content with
+      | .emph [.text t] :: rest =>
+        if t.startsWith "Proof" then
+          let (rest, done) := stripQed rest
+          let st := { st with proof := some #[proofParagraph post [em [(t : Node .phrasing)]] rest done] }
+          if done then st.closeProof (marked := true) else st
+        else st.emit (p (postInlines post content))
+      | .strong [.text bold] :: rest =>
+        match theoremLabel? bold with
+        | some (label, name) => st.emit (theoremBlock post label name rest)
+        | none => st.emit (p (postInlines post content))
+      | [.image dest _ alt] =>
+        let n := st.figures + 1
+        { st.emit (figure [
+            (img { src := CommonMark.percentEncodeUri dest, alt := GFMarkdown.plainTextOfList alt } : Node .flow),
+            figcaption [ p ([ span [ (s!"Figure {n}." : Node .phrasing) ] { class_ := "fig-label" },
+                              (" " : Node .phrasing) ] ++ postInlines post alt) ] ])
+          with figures := n }
+      | _ => st.emit (p (postInlines post content))
+  | .codeBlock info literal => st.emit (codeBlock info literal)
+  | .table header alignments rows =>
+    st.emit (div [GFMarkdown.tableNode header alignments rows] { class_ := "table-wrap" })
+  | .thematicBreak => st
+  | b => (GFMarkdown.renderBlockNodesF false 1000 b).foldl PaperState.emit st
+
+def paperBody (post : Post) : List (Node .flow) :=
+  (post.body.foldl (paperStep post) {}).closeSection.sections.toList
+
+def notesSection (post : Post) : List (Node .flow) :=
+  if post.notes.isEmpty then [] else
+    [section_ [
+      h2 [ "Notes" ] { class_ := "notes-title" },
+      ol (post.notes.toList.map fun note =>
+        li ((postInlines post note.content ++
+              [(" " : Node .phrasing), a { href := s!"{postHref post}#fnref-{note.name}", class_ := "fn-back" } [ "↩" ]]).map
+              Node.toFlow) { id := s!"fn-{note.name}" })
+    ] { class_ := "notes" }]
+
+def blogPage (posts : Array Post) (mode : Mode) : String :=
+  layout "Blog: Leangineering" "Writing about building software in Lean 4." (mode := mode) [
+    div [
+      h1 [ "Blog" ],
+      p [ "Writing about building software in Lean" ] { class_ := "venue" }
+    ] { class_ := "title-block" },
+    if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
+    else ul (posts.toList.map fun post =>
+      li [
+        a { href := postHref post, class_ := "post-title" } [ (post.title : Node .phrasing) ],
+        span [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing) ]
+          { class_ := "post-meta" },
+        p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }
+      ] { class_ := "post-item" }) { class_ := "post-list" }
+  ]
+
+def postPage (post : Post) (mode : Mode) : String :=
+  layout s!"{post.title}: Leangineering" post.excerpt (mode := mode) ([
+    div [
+      h1 [ (post.title : Node .phrasing) ],
+      p [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing), " · ",
+          a { href := "blog" } [ "Blog" ] ] { class_ := "venue" }
+    ] { class_ := "title-block" },
+    div [
+      h2 [ "Abstract" ] { class_ := "abstract-title" },
+      p [ (post.excerpt : Node .phrasing) ]
+    ] { class_ := "abstract" },
+    article (paperBody post) { class_ := "post" }
+  ] ++ notesSection post)
 
 end Leangineering.Views

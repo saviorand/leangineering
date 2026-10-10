@@ -16,6 +16,8 @@
   --rule-strong: #111111;
   --panel: #f6f6f6;
   --tick: #1a7f37;
+  --image-brightness: 1;
+  color-scheme: light;
 
   --serif: "CMU Serif", "Latin Modern Roman", "Computer Modern", Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -24,8 +26,10 @@
   --page: 48rem;
 }
 
+/* Dark follows the system unless the reader picked a theme with the button, which sets
+   `data-theme` on the root. The two blocks below hold the same values. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper: #111111;
     --ink: #ededed;
     --ink-2: #b3b3b3;
@@ -34,7 +38,21 @@
     --rule-strong: #ededed;
     --panel: #1b1b1b;
     --tick: #4ac26b;
+    --image-brightness: 0.8;
+    color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --paper: #111111;
+  --ink: #ededed;
+  --ink-2: #b3b3b3;
+  --ink-3: #969696;
+  --rule: #333333;
+  --rule-strong: #ededed;
+  --panel: #1b1b1b;
+  --tick: #4ac26b;
+  --image-brightness: 0.8;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -73,8 +91,10 @@ h1, h2, h3 { font-weight: 700; line-height: 1.25; margin: 0; }
 
 .site-header nav {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: baseline;
+  gap: 8px 24px;
   padding: 24px 0 16px;
   border-bottom: 1px solid var(--rule-strong);
 }
@@ -85,8 +105,22 @@ h1, h2, h3 { font-weight: 700; line-height: 1.25; margin: 0; }
   text-decoration: none;
   text-transform: lowercase;
 }
-.nav-links a { margin-left: 24px; font-size: 16px; font-style: italic; text-decoration: none; }
+.nav-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; }
+.nav-links a { font-size: 16px; font-style: italic; text-decoration: none; }
 .nav-links a:hover { text-decoration: underline; }
+.theme-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: 16px var(--serif);
+  line-height: 1;
+  cursor: pointer;
+}
+/* The theme button shows the theme in use: the system's, light or dark. */
+.theme-toggle::after { content: "◐"; }
+:root[data-theme="light"] .theme-toggle::after { content: "○"; }
+:root[data-theme="dark"] .theme-toggle::after { content: "●"; }
 
 main { padding: 64px 0 64px; }
 
@@ -270,6 +304,53 @@ figcaption p { margin: 0; }
   font-style: italic;
 }
 
+/* ── Blog ──────────────────────────────────────────── */
+
+.post-list { list-style: none; padding: 0; margin: 0; }
+.post-item { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+.post-item:last-child { border-bottom: 0; }
+.post-title { font-size: 20px; font-weight: 700; text-decoration: none; }
+.post-title:hover { text-decoration: underline; }
+.post-meta { display: block; margin: 4px 0 8px; font-size: 16px; font-style: italic; color: var(--ink-2); }
+.post-excerpt { margin: 0; max-width: var(--measure); }
+
+.post .code-block { margin: 0 0 24px; }
+.qed-mark { float: right; margin-left: 16px; }
+.post .post-qed { max-width: var(--measure) !important; margin: -8px 0 16px; }
+.post .proof > .code-block { margin-bottom: 16px; }
+
+/* Tables as a paper sets them: rules above and below, and one under the header. */
+.table-wrap { overflow-x: auto; margin: 24px 0 32px; }
+.post table { border-collapse: collapse; margin: 0 auto; font-size: 16px; }
+.post thead tr { border-top: 2px solid var(--rule-strong); border-bottom: 1px solid var(--rule-strong); }
+.post tbody tr:last-child { border-bottom: 2px solid var(--rule-strong); }
+.post th { font-weight: 700; text-align: left; }
+.post th, .post td { padding: 4px 16px; }
+.post td code, .post th code { background: none; padding: 0; }
+
+.post figure img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); }
+
+/* Screenshots are mostly of light pages. On a dark page they are dimmed, and hovering one shows it
+   at full brightness. */
+.post figure img { filter: brightness(var(--image-brightness)); transition: filter 0.2s; }
+.post figure img:hover { filter: none; }
+
+.fn-ref { font-size: 12px; line-height: 0; margin-left: 1px; }
+.fn-ref a { text-decoration: none; }
+.fn-ref a:hover { text-decoration: underline; }
+
+.notes { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--rule); font-size: 16px; }
+.notes-title {
+  font-size: 16px;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  margin-bottom: 8px;
+}
+.notes ol { margin: 0; padding-left: 24px; max-width: var(--measure); }
+.notes li { margin-bottom: 8px; }
+.fn-back { text-decoration: none; color: var(--ink-3); }
+
 /* ── Small screens: big things shrink faster ───────── */
 
 @media (max-width: 40rem) {
@@ -280,7 +361,7 @@ figcaption p { margin: 0; }
   .panes { grid-template-columns: 1fr; }
   .toc-list { columns: 1; }
   .abstract p { text-align: left; }
-  .nav-links a { margin-left: 16px; }
+  .nav-links { gap: 4px 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
