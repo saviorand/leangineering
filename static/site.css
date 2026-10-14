@@ -4,7 +4,8 @@
     type:    14 16 18 20 24 30 36
     space:   4 8 12 16 24 32 48 64 96
   Two families: CMU Serif (everything) and JetBrains Mono (code).
-  Black on white. The one colour is the infoview's tick.
+  Black on white. The colours are the infoview's tick and highlighted code, which is coloured
+  the way an editor colours it.
 */
 
 :root {
@@ -16,6 +17,12 @@
   --rule-strong: #111111;
   --panel: #f6f6f6;
   --tick: #1a7f37;
+  --code-kw: #cf222e;
+  --code-def: #8250df;
+  --code-ty: #953800;
+  --code-str: #0a3069;
+  --code-num: #0550ae;
+  --code-cm: #6e7781;
   --image-brightness: 1;
   color-scheme: light;
 
@@ -38,6 +45,12 @@
     --rule-strong: #ededed;
     --panel: #1b1b1b;
     --tick: #4ac26b;
+    --code-kw: #ff7b72;
+    --code-def: #d2a8ff;
+    --code-ty: #ffa657;
+    --code-str: #a5d6ff;
+    --code-num: #79c0ff;
+    --code-cm: #8b949e;
     --image-brightness: 0.8;
     color-scheme: dark;
   }
@@ -51,6 +64,12 @@
   --rule-strong: #ededed;
   --panel: #1b1b1b;
   --tick: #4ac26b;
+  --code-kw: #ff7b72;
+  --code-def: #d2a8ff;
+  --code-ty: #ffa657;
+  --code-str: #a5d6ff;
+  --code-num: #79c0ff;
+  --code-cm: #8b949e;
   --image-brightness: 0.8;
   color-scheme: dark;
 }
@@ -206,9 +225,12 @@ figcaption p { margin: 0; }
   overflow-x: auto;
   font: 400 14px/1.6 var(--mono);
 }
-.tk-kw { font-weight: 700; }
-.tk-str { color: var(--ink-2); }
-.tk-cm { color: var(--ink-3); font-style: italic; }
+.tk-kw { color: var(--code-kw); }
+.tk-def { color: var(--code-def); }
+.tk-ty { color: var(--code-ty); }
+.tk-str { color: var(--code-str); }
+.tk-num { color: var(--code-num); }
+.tk-cm { color: var(--code-cm); font-style: italic; }
 .caret {
   display: inline-block;
   width: 8px;
@@ -315,7 +337,7 @@ figcaption p { margin: 0; }
 .post-excerpt { margin: 0; max-width: var(--measure); }
 
 .post .code-block { margin: 0 0 24px; }
-.qed-mark { float: right; margin-left: 16px; }
+.qed-mark { margin-left: 0.3em; }
 .post .post-qed { max-width: var(--measure) !important; margin: -8px 0 16px; }
 .post .proof > .code-block { margin-bottom: 16px; }
 

@@ -376,6 +376,25 @@ def leanKeywords : List String :=
 
 def isIdentChar (c : Char) : Bool := c.isAlphanum || c == '_' || c == '.' || c == '?' || c == '!'
 
+/-- Keywords after which the next word is the name being defined. -/
+def definingKeywords : List String :=
+  ["def", "theorem", "lemma", "inductive", "structure", "class", "abbrev"]
+
+/-- `String` and `Db.UserRow` are types, by Lean's naming convention; `Service.deleteComment` is not. -/
+def isTypeName (word : String) : Bool :=
+  ((word.splitOn ".").getLast?.bind (·.toList.head?)).any Char.isUpper
+
+/-- One run of identifier characters, or of anything else, coloured. `afterDef` says whether the
+run follows a defining keyword; the result says whether the next one does. -/
+def highlightRun (afterDef : Bool) (run : List Char) : Node .phrasing × Bool :=
+  let word := String.ofList run
+  if !run.any isIdentChar then ((word : Node .phrasing), afterDef && run.all Char.isWhitespace)
+  else if leanKeywords.contains word then (kw word, definingKeywords.contains word)
+  else if afterDef then (tk "tk-def" word, false)
+  else if run.all Char.isDigit then (tk "tk-num" word, false)
+  else if isTypeName word then (tk "tk-ty" word, false)
+  else ((word : Node .phrasing), false)
+
 /-- Consecutive characters of the same kind, by `p`. -/
 def runs (p : Char → Bool) (cs : List Char) : List (List Char) :=
   cs.foldr (init := []) fun c acc =>
@@ -383,24 +402,44 @@ def runs (p : Char → Bool) (cs : List Char) : List (List Char) :=
     | (d :: ds) :: rest => if p c == p d then (c :: d :: ds) :: rest else [c] :: acc
     | _ => [c] :: acc
 
-/-- One line of Lean, with keywords, string literals and a trailing comment marked. -/
-def highlightLine (line : String) : List (Node .phrasing) :=
-  let (source, comment) := match line.splitOn "--" with
+/-- `s` split at the double quotes that open or close string literals, skipping the one in the
+character literal `'"'` and escaped ones inside strings. -/
+def splitQuotes (s : String) : List String :=
+  let rec go : List Char → List Char → Array String → Array String
+    | [], cur, acc => acc.push (String.ofList cur.reverse)
+    | '\'' :: '"' :: '\'' :: rest, cur, acc => go rest ('\'' :: '"' :: '\'' :: cur) acc
+    | '\\' :: c :: rest, cur, acc => go rest (c :: '\\' :: cur) acc
+    | '"' :: rest, cur, acc => go rest [] (acc.push (String.ofList cur.reverse))
+    | c :: rest, cur, acc => go rest (c :: cur) acc
+  (go s.toList [] #[]).toList
+
+/-- One line of Lean, with keywords, string literals and a trailing comment marked. `inString` says
+whether the line starts inside a string that an earlier line opened; the result says whether it
+ends inside one. -/
+def highlightLine (inString : Bool) (line : String) : List (Node .phrasing) × Bool :=
+  let (source, comment) := if inString then (line, none) else match line.splitOn "--" with
     | first :: rest@(_ :: _) => (first, some ("--" ++ "--".intercalate rest))
     | _ => (line, none)
-  let segments := source.splitOn "\""
+  let segments := splitQuotes source
+  -- Segments alternate between code and string, starting with string inside an open one.
+  let offset := if inString then 1 else 0
   let code := segments.zipIdx.flatMap fun (segment, i) =>
-    if i % 2 == 1 then
-      [str ("\"" ++ segment ++ (if i + 1 < segments.length then "\"" else ""))]
-    else (runs isIdentChar segment.toList).map fun run =>
-      let word := String.ofList run
-      if leanKeywords.contains word then kw word else (word : Node .phrasing)
-  code ++ (match comment with | some c => [cm c] | none => [])
+    if (i + offset) % 2 == 1 then
+      [str ((if i > 0 then "\"" else "") ++ segment ++ (if i + 1 < segments.length then "\"" else ""))]
+    else ((runs isIdentChar segment.toList).foldl (init := (#[], false)) fun (nodes, afterDef) run =>
+      let (node, afterDef) := highlightRun afterDef run
+      (nodes.push node, afterDef)).1.toList
+  (code ++ (match comment with | some c => [cm c] | none => []),
+   (segments.length - 1 + offset) % 2 == 1)
 
 def codeBlock (info : Option String) (literal : String) : Node .flow :=
   let text := (literal.dropEndWhile (· == '\n')).toString
   let body : List (Node .phrasing) :=
-    if info == some "lean" then ((text.splitOn "\n").map highlightLine).intersperse [("\n" : Node .phrasing)] |>.flatten
+    if info == some "lean" then
+      let (lines, _) := (text.splitOn "\n").foldl (init := (#[], false)) fun (lines, inString) line =>
+        let (nodes, inString) := highlightLine inString line
+        (lines.push nodes, inString)
+      lines.toList.intersperse [("\n" : Node .phrasing)] |>.flatten
     else [(text : Node .phrasing)]
   div [ pre body { class_ := "pane-code" } ] { class_ := "pane code-block" }
 
@@ -432,7 +471,8 @@ def postInlines (post : Post) (content : List RawInline) : List (Node .phrasing)
   content.flatMap (postInline post)
 
 def theoremKinds : List String :=
-  ["Theorem", "Lemma", "Definition", "Corollary", "Proposition", "Problem", "Remark"]
+  ["Theorem", "Lemma", "Definition", "Corollary", "Proposition", "Claim", "Observation", "Question",
+   "Construction", "Problem", "Gap", "Remark"]
 
 /-- `Lemma 1 (Routing).` as `("Lemma 1", some "Routing")`, if it names a theorem-like kind. -/
 def theoremLabel? (bold : String) : Option (String × Option String) :=
@@ -448,11 +488,13 @@ def trimStart : List RawInline → List RawInline
   | .text s :: rest => .text s.trimAsciiStart.toString :: rest
   | content => content
 
-/-- A theorem-like paragraph. Problems and remarks are discussion, so only statements are italic. -/
+/-- A theorem-like paragraph. Constructions, problems, gaps and remarks are discussion, so only
+statements are italic. -/
 def theoremBlock (post : Post) (label : String) (name : Option String)
     (statement : List RawInline) : Node .flow :=
   let body := postInlines post (trimStart statement)
-  let italic := !(label.startsWith "Problem" || label.startsWith "Remark")
+  let italic := !(label.startsWith "Construction" || label.startsWith "Problem" || label.startsWith "Gap" ||
+    label.startsWith "Remark")
   div [
     p ([ span [ (label : Node .phrasing) ] { class_ := "thm-label" },
          ((match name with | some n => s!" ({n}). " | none => ". ") : Node .phrasing) ] ++
