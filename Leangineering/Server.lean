@@ -45,7 +45,7 @@ of them. -/
 def app (site : Awesome) (posts : Array Post) (assets : Array (String × ByteArray)) (css : String)
     (mode : Views.Mode) : StatelessHandler :=
   let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage mode)
-  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site mode)),
+  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site posts mode)),
     .get Site.patterns.blog (fun _ => Response.ok.html (Views.blogPage posts mode)),
     .get Site.patterns.post (fun slug req =>
       match posts.find? (·.slug == slug) with

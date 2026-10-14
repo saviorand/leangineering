@@ -202,7 +202,7 @@ RealWorld's website tests do check for cross-site scripting. They inject malicio
 
 So this app is not correct by construction. Whether any RealWorld app in Lean can be (Question 3) is still open. Answering it would start with writing RealWorld's behavior down in Lean. Deriving the app from that would also need a model of SQL, plus proofs about the C libraries and `Std.Http` underneath. For now, the slug is the only part where the method has been carried all the way through.
 
-Instructions for running the app and both test suites are in the repository. Come say hi on the [Leangineer Discord](https://discord.gg/ACKNs7ZJPj) if you're building something in Lean.
+Instructions for running the app and both test suites are in the repository.
 
 **Acknowledgments.** Thanks to Paul Butcher, whose libraries made this possible, and to Carlo Hamalainen for datastar-lean.
 

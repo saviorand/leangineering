@@ -98,8 +98,8 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           span [
             a { href := "blog" } [ "Blog" ],
             a { href := "awesome" } [ "Directory" ],
-            a { href := discordUrl } [ "Discord" ],
             a { href := sourceUrl } [ "Source" ],
+            a { href := discordUrl, class_ := "nav-cta" } [ "Discord" ],
             button [] { type := "button", class_ := "theme-toggle" }
               [("aria-label", "Theme: system, light or dark"), ("title", "Theme: system, light or dark"),
                ("onclick", themeToggle)]
@@ -125,7 +125,16 @@ def layout (pageTitle description : String) (content : List (Node .flow))
 def sectionHeading (n : Nat) (content : List (Node .phrasing)) (id : Option String := none) : Node .flow :=
   h2 ([ span [ (s!"{n}" : Node .phrasing) ] { class_ := "sec-num" } ] ++ content) { id := id }
 
-def qed : Node .flow := p [ "∎" ] { class_ := "qed" }
+/-- The ∎ that ends a proof's last sentence. -/
+def qedMark : Node .phrasing := span [ "∎" ] { class_ := "qed-mark" }
+
+/-- The invitation to the Discord, set after the content a reader came for. -/
+def discordInvite : Node .flow :=
+  div [
+    p [ "The ", a { href := discordUrl } [ "Leangineer Discord" ],
+        " is a place for people who build software with Lean, or want to. You don't need a maths background. Come ask questions and share what you're working on." ],
+    p [ a { href := discordUrl, class_ := "button" } [ "Join the Discord" ] ]
+  ] { class_ := "invite" }
 
 /-! ## The listing and the infoview -/
 
@@ -134,7 +143,8 @@ def kw := tk "tk-kw"
 def str := tk "tk-str"
 def cm := tk "tk-cm"
 
-/-- Real code from this site, lightly abridged. -/
+/-- Real code from this site, lightly abridged, and a `#check` of the lean-html theorem that its
+escaping rests on. The infoview shows what Lean prints for that `#check`. -/
 def editorPane : Node .flow :=
   div [
     div [ span [ "Main.lean" ] ] { class_ := "pane-bar" },
@@ -142,12 +152,13 @@ def editorPane : Node .flow :=
       cm "-- the routes this page was served from", "\n",
       kw "route_table", " Site", "\n",
       "  [ home     := ", str "\"/\"", ",\n",
+      "    blog     := ", str "\"/blog\"", ",\n",
       "    awesome  := ", str "\"/awesome\"", ",\n",
       "    category := ", str "\"/awesome/:slug:String\"", " ]", "\n\n",
       kw "def", " hero : Node .flow :=", "\n",
       "  h1 [ ", str "\"Lean 4 for Software Engineers\"", " ]", "\n\n",
-      kw "theorem", " site_is_written_in_lean : True := ", kw "by", "\n",
-      "  ", kw "trivial", span [] { class_ := "caret" }
+      cm "-- what lean-html proves about escaping", "\n",
+      kw "#check", " escape_safe", span [] { class_ := "caret" }
     ] { class_ := "pane-code" }
   ] { class_ := "pane" }
 
@@ -155,9 +166,9 @@ def infoview : Node .flow :=
   div [
     div [ span [ "Lean Infoview" ] ] { class_ := "pane-bar" },
     div [
-      p [ "▼ Main.lean:10:2" ] { class_ := "iv-loc" },
-      p [ "No goals" ] { class_ := "iv-done" },
-      p [ span [ "✓" ] { class_ := "iv-tick" }, " Goals accomplished" ] { class_ := "iv-win" }
+      p [ "▼ Main.lean:12:0" ] { class_ := "iv-loc" },
+      p [ "Html.escape_safe\n  (s : String) (c : Char) :\n  c ∈ (escape s).toList →\n    c ≠ '<' ∧ c ≠ '>' ∧\n    c ≠ '\\\"'" ]
+        { class_ := "iv-type" }
     ] { class_ := "pane-body" }
   ] { class_ := "pane" }
 
@@ -244,28 +255,46 @@ def searchBox (mode : Mode) : Node .flow :=
 
 /-! ## Pages -/
 
-def homePage (site : Awesome) (mode : Mode) : String :=
+def postHref (post : Post) : String := s!"blog/{post.slug}"
+
+/-- A post in a list: its title, its date and its excerpt. -/
+def postItem (post : Post) : Node .listItem :=
+  li [
+    a { href := postHref post, class_ := "post-title" } [ (post.title : Node .phrasing) ],
+    span [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing) ]
+      { class_ := "post-meta" },
+    p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }
+  ] { class_ := "post-item" }
+
+/-- How many posts the home page lists before pointing to the blog. -/
+def homePostCount : Nat := 3
+
+def homePage (site : Awesome) (posts : Array Post) (mode : Mode) : String :=
   layout "Leangineering: Lean 4 for software engineers"
-    "A community and learning resource for software engineers using Lean 4." (mode := mode) [
+    "A community for people who use Lean 4 to build software." (mode := mode) [
     div [
       h1 [ "Lean 4 for Software Engineers" ],
       p [ "leangineer.com · ", a { href := discordUrl } [ "Join the Discord" ] ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [
       h2 [ "Abstract" ] { class_ := "abstract-title" },
-      p [ "Lean is not just for mathematicians anymore. You can use it to build real software, today. Lean is a compiled functional language that happens to also be a theorem prover. Most of what's written about it is about the proving part. This site is about the programming part: libraries, tools, and how to actually ship things with them. No category theory required." ]
+      p [ "Lean 4 is best known as a theorem prover for mathematics. It's also a compiled functional language you can build real software with today." ],
+      p [ "Leangineering is a community for people who use Lean for software engineering and computer science." ],
+      p [ "Start with the ", a { href := "awesome" } [ "directory of Lean libraries and tools" ], ", or read ",
+          a { href := "blog" } [ "writing about real projects" ], " built with them." ]
     ] { class_ := "abstract" },
     section_ [
       sectionHeading 1 [ "The directory" ],
-      p [ (s!"Awesome Lean Programming collects {site.entryCount} libraries, tools and projects for building software in Lean, in {site.categories.size} sections: web servers, databases, FFI, parsers, and more. It's searchable, and it's generated from the " : Node .phrasing),
-          a { href := listUrl } [ "awesome-lean-programming" ], " list, so a PR there shows up here too." ],
+      p [ (s!"Awesome Lean Programming is a directory of {site.entryCount} libraries, tools and projects for building software in Lean." : Node .phrasing) ],
       p [ a { href := "awesome", class_ := "button" } [ "Browse the directory" ] ]
     ],
-    section_ [
-      sectionHeading 2 [ "Guides" ],
-      p [ "Hands-on guides: web apps, FFI, and Lean for people coming from Rust, Haskell or TypeScript. Every code sample here gets compiled, so if it's on the site, it works." ],
-      p [ span [ "sorry" ] { class_ := "sorry" }, " These aren't written yet." ] { class_ := "note" }
-    ],
+    section_ ([
+      sectionHeading 2 [ "Writing" ],
+      if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
+      else ul ((posts.toList.take homePostCount).map postItem) { class_ := "post-list" },
+      p [ "If you've built something in Lean, share it on the ", a { href := discordUrl } [ "Discord" ],
+          " or add it to the ", a { href := "awesome" } [ "directory" ], "." ]
+    ] ++ (if posts.size > homePostCount then [p [ a { href := "blog", class_ := "button" } [ "All posts" ] ]] else [])),
     section_ [
       sectionHeading 3 [ "How this site is built" ],
       div [
@@ -273,26 +302,21 @@ def homePage (site : Awesome) (mode : Mode) : String :=
             em [ "Every page on this site is a typed HTML value produced by a Lean program." ] ]
       ] { class_ := "theorem" },
       div [
-        p [ em [ "Proof." ], " Yes, really. Pages are built with lean-html, so if I put a ", code [ "<div>" ],
-            " inside a ", code [ "<p>" ], ", it doesn't compile. The directory is parsed from the awesome-lean-programming readme with a Markdown parser that is proved to produce well-formed HTML. Search streams results from the server with Datastar, so there's no frontend build step and no client-side state to manage. The routes are in Figure 1; the infoview agrees." ],
-        figure [
-          div [ editorPane, infoview ] { class_ := "panes" },
-          figcaption [ p [ span [ "Figure 1." ] { class_ := "fig-label" },
-                           " The route table this page was served from, and Lean's verdict." ] ]
-        ],
-        qed
+        p [ em [ "Proof." ], " Pages are built with lean-html, so a ", code [ "<div>" ],
+            " inside a ", code [ "<p>" ], " is a compile error. The directory comes from the awesome-lean-programming readme, which the site sanitizes and turns into lean-html nodes as well. Search streams results from the server with Datastar, so there's no frontend build step. Figure 1 shows part of the code.",
+            qedMark ]
       ] { class_ := "proof" },
-      p [ "I think that's a pretty good demo of what Lean can do outside of math. ",
-          a { href := sourceUrl } [ "The code is open source" ], ", if you want to see how it's done." ]
+      figure [
+        div [ editorPane, infoview ] { class_ := "panes" },
+        figcaption [ p [ span [ "Figure 1." ] { class_ := "fig-label" },
+                         " Some of the code behind this page. On the right, Lean's infoview shows the theorem lean-html proves about escaping." ] ]
+      ],
+      p [ "The ", a { href := sourceUrl } [ "site's code" ], " is open source if you want to see how it's done or improve it." ]
     ],
     section_ [
-      sectionHeading 4 [ "About the author" ],
-      p [ "Hi, I'm ", a { href := "https://valentin.wiki" } [ "Valentin" ],
-          ". I made ", a { href := "https://github.com/saviorand/lightbug_http" } [ "Lightbug" ],
-          ", the first HTTP framework for Mojo, and ", a { href := "https://github.com/saviorand/datastar-lean" } [ "datastar-lean" ],
-          ". I'm collecting what I learn about writing real software in Lean here. Hit me up on ",
-          a { href := "https://bsky.app/profile/a2svior.bsky.social" } [ "Bluesky" ], " or on the ",
-          a { href := "https://leanprover.zulipchat.com/" } [ "Lean Zulip" ], " if you have questions or ideas." ]
+      sectionHeading 4 [ "Community" ],
+      p [ "Most of the conversation happens on the Discord. Beginners and people without a maths background are welcome." ],
+      p [ a { href := discordUrl, class_ := "button" } [ "Join the Discord" ] ]
     ]
   ]
 
@@ -309,7 +333,8 @@ def awesomePage (site : Awesome) (mode : Mode) : String :=
     ] ++ site.intro.toList.map (fun para => p (inlines para)) ++ [
       p [ (s!"{site.entryCount} entries, curated in the " : Node .phrasing),
           a { href := listUrl } [ "awesome-lean-programming" ],
-          " repo. Missing something? Open a PR there, and it shows up here too." ]
+          " repo. Missing something? Open a PR there and it shows up here too, or mention it on the ",
+          a { href := discordUrl } [ "Discord" ], "." ]
     ]) { class_ := "abstract" }
   ] ++ [
     searchBox mode,
@@ -350,8 +375,9 @@ def notFoundPage (mode : Mode) : String :=
     div [
       p [ "error: unknown identifier ‘page’" ] { class_ := "error-line" },
       h1 [ "Not found" ],
-      p [ "Nothing here. Maybe I haven't written it yet. In the meantime, the ",
-          a { href := "awesome" } [ "directory" ], " has 300+ things to look at." ]
+      p [ "Nothing here. Maybe it hasn't been written yet. In the meantime, the ",
+          a { href := "awesome" } [ "directory" ], " has 300+ things to look at. If you were looking for something specific, ask on the ",
+          a { href := discordUrl } [ "Discord" ], "." ]
     ] { class_ := "title-block" }
   ]
 
@@ -359,15 +385,14 @@ def notFoundPage (mode : Mode) : String :=
 
 A post renders as a paper. `##` headings are numbered sections. A paragraph that opens in bold with
 a theorem-like label (`**Lemma 1 (Routing).**`) is set as a theorem, its statement in italics. One
-that opens with `*Proof.*` starts a proof, which runs to the block ending in `∎`. As in a paper,
-the ∎ ends the proof's last line, or stands on a line of its own after a code block. A paragraph holding only an image is a numbered figure, captioned with
-the image's alt text. Lean code blocks get the same keyword, string and comment styles as the home
+that opens with `*Proof.*` starts a proof, which runs to the block ending in `∎`. The ∎ follows
+the proof's last sentence. A proof that ends in a code block gets a ∎ on a line of its own, but
+reads better ending in a sentence. A paragraph holding only an image is a numbered figure, captioned
+with the image's alt text. Lean code blocks get the same keyword, string and comment styles as the home
 page's listing.
 -/
 
 open CommonMark.Parser (RawInline)
-
-def postHref (post : Post) : String := s!"blog/{post.slug}"
 
 def leanKeywords : List String :=
   ["def", "theorem", "lemma", "inductive", "structure", "class", "instance", "where", "match",
@@ -546,8 +571,6 @@ def closeSection (st : PaperState) : PaperState :=
 
 end PaperState
 
-def qedMark : Node .phrasing := span [ "∎" ] { class_ := "qed-mark" }
-
 /-- A proof's paragraph, ending in ∎ if it closes the proof. -/
 def proofParagraph (post : Post) (lead : List (Node .phrasing)) (content : List RawInline)
     (done : Bool) : Node .flow :=
@@ -611,13 +634,8 @@ def blogPage (posts : Array Post) (mode : Mode) : String :=
       p [ "Writing about building software in Lean" ] { class_ := "venue" }
     ] { class_ := "title-block" },
     if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
-    else ul (posts.toList.map fun post =>
-      li [
-        a { href := postHref post, class_ := "post-title" } [ (post.title : Node .phrasing) ],
-        span [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing) ]
-          { class_ := "post-meta" },
-        p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }
-      ] { class_ := "post-item" }) { class_ := "post-list" }
+    else ul (posts.toList.map postItem) { class_ := "post-list" },
+    discordInvite
   ]
 
 def postPage (post : Post) (mode : Mode) : String :=
@@ -631,7 +649,8 @@ def postPage (post : Post) (mode : Mode) : String :=
       h2 [ "Abstract" ] { class_ := "abstract-title" },
       p [ (post.excerpt : Node .phrasing) ]
     ] { class_ := "abstract" },
-    article (paperBody post) { class_ := "post" }
+    article (paperBody post) { class_ := "post" },
+    discordInvite
   ] ++ notesSection post)
 
 end Leangineering.Views

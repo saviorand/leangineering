@@ -127,6 +127,8 @@ h1, h2, h3 { font-weight: 700; line-height: 1.25; margin: 0; }
 .nav-links { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 24px; }
 .nav-links a { font-size: 16px; font-style: italic; text-decoration: none; }
 .nav-links a:hover { text-decoration: underline; }
+.nav-links a.nav-cta { font-style: normal; padding: 2px 10px; border: 1px solid var(--rule-strong); }
+.nav-links a.nav-cta:hover { background: var(--ink); color: var(--paper); text-decoration: none; }
 .theme-toggle {
   padding: 0;
   border: 0;
@@ -194,6 +196,19 @@ h2 a:hover { text-decoration: underline; }
 .button::after { content: " →"; }
 .button:hover { background: var(--ink); color: var(--paper); }
 
+/* The Discord invitation: a ruled box, like a note set apart in a paper. */
+.invite {
+  max-width: 32rem;
+  margin: 0 auto 64px;
+  padding: 16px 0;
+  border-top: 1px solid var(--rule-strong);
+  border-bottom: 1px solid var(--rule-strong);
+  text-align: center;
+}
+.invite p { max-width: none; }
+.invite p:last-child { margin-bottom: 0; }
+.post + .invite { margin-top: 48px; }
+
 .note { color: var(--ink-2); font-style: italic; }
 .sorry { font: 700 14px var(--mono); font-style: normal; color: var(--ink); margin-right: 4px; }
 
@@ -243,9 +258,7 @@ figcaption p { margin: 0; }
 .pane-body { padding: 16px; font: 400 14px/1.6 var(--mono); }
 .pane-body p { margin: 0 0 8px; max-width: none; }
 .iv-loc { color: var(--ink-3); }
-.iv-done { animation: settle 1.2s ease-out both 0.4s; }
-.iv-win { animation: settle 1.2s ease-out both 1s; }
-.iv-tick { color: var(--tick); font-weight: 700; }
+.iv-type { white-space: pre-wrap; animation: settle 1.2s ease-out both 0.4s; }
 
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes settle { from { opacity: 0; } to { opacity: 1; } }
@@ -387,5 +400,5 @@ figcaption p { margin: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .caret, .iv-done, .iv-win { animation: none; }
+  .caret, .iv-type { animation: none; }
 }

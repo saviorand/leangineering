@@ -36,7 +36,7 @@ def build (site : Awesome) (posts : Array Post) (assets : Array (String × ByteA
   let base := (← IO.getEnv "BASE_PATH").getD "/"
   let mode : Views.Mode :=
     { interactive := false, base := if base.endsWith "/" then base else base ++ "/", favicon }
-  writePage dir "index.html" (Views.homePage site mode)
+  writePage dir "index.html" (Views.homePage site posts mode)
   writePage dir "blog/index.html" (Views.blogPage posts mode)
   for post in posts do
     writePage dir s!"blog/{post.slug}/index.html" (Views.postPage post mode)
