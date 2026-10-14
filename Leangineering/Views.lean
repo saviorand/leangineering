@@ -26,6 +26,8 @@ namespace Leangineering.Views
 
 open Html
 
+/-- Link previews need absolute URLs, which the `<base>` tag doesn't give. -/
+def siteUrl : String := "https://leangineer.com/"
 def sourceUrl : String := "https://github.com/saviorand/leangineering"
 def listUrl : String := "https://github.com/saviorand/awesome-lean-programming"
 def discordUrl : String := "https://discord.gg/ACKNs7ZJPj"
@@ -75,8 +77,26 @@ def categoryHref (c : Category) : String := s!"awesome/{c.slug}"
 def sectionNumber (site : Awesome) (c : Category) : Nat :=
   (site.categories.findIdx? (·.slug == c.slug)).getD 0 + 1
 
+/-- What LinkedIn, Slack and the like show for a link to a post, as Open Graph tags. `path` is
+relative to `siteUrl` and `image` is a file in `static/blog/`, or empty. -/
+structure Preview where
+  title : String
+  path : String
+  image : String
+
+def Preview.tags (p : Preview) (description : String) : List (Node .flow) :=
+  let prop (name content : String) : Node .flow := meta_ [("property", name), ("content", content)]
+  [ prop "og:type" "article",
+    prop "og:site_name" "Leangineering",
+    prop "og:title" p.title,
+    prop "og:description" description,
+    prop "og:url" (siteUrl ++ p.path) ] ++
+  (if p.image.isEmpty then [] else
+    [ prop "og:image" s!"{siteUrl}static/blog/{p.image}",
+      meta_ [("name", "twitter:card"), ("content", "summary_large_image")] ])
+
 def layout (pageTitle description : String) (content : List (Node .flow))
-    (mode : Mode) : String :=
+    (mode : Mode) (preview : Option Preview := none) : String :=
   document (lang := "en") [
     head ([
       meta_ [("charset", "utf-8")],
@@ -88,7 +108,8 @@ def layout (pageTitle description : String) (content : List (Node .flow))
       link { rel := "stylesheet", href := cmuSerifCss },
       link { rel := "stylesheet", href := monoCss },
       link { rel := "stylesheet", href := "static/site.css" }
-    ] ++ (if mode.favicon.isEmpty then [] else [link { rel := "icon", href := mode.favicon }])
+    ] ++ (preview.map (·.tags description)).getD []
+      ++ (if mode.favicon.isEmpty then [] else [link { rel := "icon", href := mode.favicon }])
       ++ (if mode.interactive then [] else [script { src := "static/search.js" }])
       ++ [script { src := datastarJs } [("type", "module")]]),
     body [
@@ -639,7 +660,8 @@ def blogPage (posts : Array Post) (mode : Mode) : String :=
   ]
 
 def postPage (post : Post) (mode : Mode) : String :=
-  layout s!"{post.title}: Leangineering" post.excerpt (mode := mode) ([
+  layout s!"{post.title}: Leangineering" post.excerpt (mode := mode)
+    (preview := some { title := post.title, path := s!"{postHref post}/", image := post.image }) ([
     div [
       h1 [ (post.title : Node .phrasing) ],
       p [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing), " · ",

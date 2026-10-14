@@ -11,7 +11,10 @@ block:
     excerpt: "One or two sentences, for the blog's index and the page's description."
     date: 2026-10-08
     draft: true
+    image: realworld-og.png
     ---
+
+`image` is optional: a 1200×630 picture in `static/blog/` that link previews show.
 
 The body is GitHub-flavored Markdown, sanitized like the directory's readme, so raw HTML never
 reaches a page. lean-markdown has no footnotes, so they are handled here: each `[^name]` becomes a
@@ -36,6 +39,8 @@ structure Post where
   /-- `YYYY-MM-DD`. -/
   date : String
   draft : Bool
+  /-- A file in `static/blog/` for link previews, or empty. -/
+  image : String
   body : GFMarkdown.Document
   notes : Array Note
 
@@ -118,6 +123,7 @@ def parse (slug src : String) : Post :=
     excerpt := field "excerpt"
     date := field "date"
     draft := field "draft" == "true"
+    image := field "image"
     body := parseMarkdown body
     notes := (cited ++ uncited.toArray).filterMap named }
 

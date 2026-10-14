@@ -3,6 +3,7 @@ title: I built the RealWorld app in Lean 4
 excerpt: "I built RealWorld, the reference full-stack app with official test suites, entirely in Lean 4. Can it be done? Yes. Is it ready for production? Somewhat. Can it be made correct by construction? Partly. It can certainly be made more robust than the average full-stack app, though."
 date: 2026-10-14
 draft: false
+image: realworld-og.png
 ---
 
 ![The home page, rendered on the server by Lean.](static/blog/realworld-home.png)
