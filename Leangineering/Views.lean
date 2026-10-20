@@ -3,6 +3,7 @@ import CommonMark
 import GFMarkdown
 import Leangineering.Awesome
 import Leangineering.Blog
+import Leangineering.Community
 
 /-!
 # Pages
@@ -118,6 +119,7 @@ def layout (pageTitle description : String) (content : List (Node .flow))
           a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
             a { href := "blog" } [ "Blog" ],
+            a { href := "community" } [ "Community" ],
             a { href := "awesome" } [ "Directory" ],
             a { href := sourceUrl } [ "Source" ],
             a { href := discordUrl, class_ := "nav-cta" } [ "Discord" ],
@@ -674,5 +676,33 @@ def postPage (post : Post) (mode : Mode) : String :=
     article (paperBody post) { class_ := "post" },
     discordInvite
   ] ++ notesSection post)
+
+/-! ## Community
+
+Posts shared in the Discord's `#blog-posts` forum, linked to where they were published. Everything here
+comes from other people, so it's only ever text, which lean-html escapes.
+-/
+
+/-- A shared post: its title, linking to where it was published, who shared it and when, and how
+it starts. -/
+def communityPostItem (post : CommunityPost) : Node .listItem :=
+  li (([
+    a { href := post.url, class_ := "post-title" } [ (post.title : Node .phrasing) ],
+    span [ (s!"{post.author} · {Post.formatDate post.date}" : Node .phrasing) ] { class_ := "post-meta" }
+  ] : List (Node .flow)) ++
+    (if post.excerpt.isEmpty then [] else [p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }]))
+    { class_ := "post-item" }
+
+def communityPage (posts : Array CommunityPost) (mode : Mode) : String :=
+  layout "Community: Leangineering" "Writing about Lean from the Leangineering community." (mode := mode) [
+    div [
+      h1 [ "From the community" ],
+      p [ "Writing about Lean, shared on the Discord" ] { class_ := "venue" }
+    ] { class_ := "title-block" },
+    if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
+    else ul (posts.toList.map communityPostItem) { class_ := "post-list" },
+    p [ "Have you written about Lean? Share it in #blog-posts on the ", a { href := discordUrl } [ "Discord" ],
+        " and it shows up here." ]
+  ]
 
 end Leangineering.Views

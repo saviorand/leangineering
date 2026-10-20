@@ -3,7 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
-  # Rebuild daily so the directory picks up changes to awesome-lean-programming.
+  # Rebuild daily so the directory picks up changes to awesome-lean-programming, and the
+  # community page picks up new posts from the Discord.
   schedule:
     - cron: "17 5 * * *"
   # awesome-lean-programming can trigger a rebuild on push with a `repository_dispatch` event.
@@ -51,6 +52,12 @@ jobs:
 
       - name: Pull the latest awesome-lean-programming list
         run: scripts/sync-awesome.sh
+
+      # If Discord can't be read, the snapshot committed in `data/community.json` is used.
+      - name: Pull the latest posts from the Discord's blogs forum
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+        run: .lake/build/bin/leangineering sync-community
 
       - id: pages
         uses: actions/configure-pages@v5

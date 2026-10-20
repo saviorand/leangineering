@@ -3,6 +3,7 @@ import Routing
 import Datastar
 import Leangineering.Awesome
 import Leangineering.Blog
+import Leangineering.Community
 import Leangineering.Views
 
 namespace Leangineering
@@ -15,6 +16,7 @@ route_table Site
   [ home := "/",
     blog := "/blog",
     post := "/blog/:slug:String",
+    community := "/community",
     awesome := "/awesome",
     search := "/search",
     category := "/awesome/:slug:String",
@@ -42,8 +44,8 @@ def searchHandler (site : Awesome) (req : Request Body.Stream) : ContextAsync (R
 
 /-- `assets` are the files in `static/blog/`, read at startup, so a request can only ever name one
 of them. -/
-def app (site : Awesome) (posts : Array Post) (assets : Array (String × ByteArray)) (css : String)
-    (mode : Views.Mode) : StatelessHandler :=
+def app (site : Awesome) (posts : Array Post) (community : Array CommunityPost)
+    (assets : Array (String × ByteArray)) (css : String) (mode : Views.Mode) : StatelessHandler :=
   let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage mode)
   [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site posts mode)),
     .get Site.patterns.blog (fun _ => Response.ok.html (Views.blogPage posts mode)),
@@ -51,6 +53,7 @@ def app (site : Awesome) (posts : Array Post) (assets : Array (String × ByteArr
       match posts.find? (·.slug == slug) with
       | some post => Response.ok.html (Views.postPage post mode)
       | none => notFound req),
+    .get Site.patterns.community (fun _ => Response.ok.html (Views.communityPage community mode)),
     .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site mode)),
     .get Site.patterns.search (searchHandler site),
     .get Site.patterns.category (fun slug req =>

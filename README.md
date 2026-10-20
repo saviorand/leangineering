@@ -7,9 +7,13 @@ Source for [leangineer.com](https://leangineer.com), a community and learning re
 ## What's here
 
 - `/awesome`: the [awesome-lean-programming](https://github.com/saviorand/awesome-lean-programming) list as a browsable directory, with a page per category and live search.
+- `/blog`: posts written as maths papers.
+- `/community`: posts about Lean shared in the `#blog-posts` forum on the [Discord](https://discord.gg/ACKNs7ZJPj).
 - Guides are coming next.
 
 The directory is generated from the awesome-lean-programming readme, which stays the single source of truth. To change an entry, open a pull request there.
+
+The community page lists every post in the Discord's `#blog-posts` forum that links somewhere, using Discord's preview of the link for the title and description. An author keeps a post off the page by giving it the forum's `Unlisted` tag.
 
 ## Stack
 
@@ -33,11 +37,14 @@ BASE_PATH=/leangineering/ .lake/build/bin/leangineering build dist   # hosted un
 
 With a server, search runs in Lean and streams results over SSE. The static build filters in the browser instead, with Datastar and `static/search.js`.
 
-Both modes read `data/awesome-lean.md`, `static/site.css` and `brand/logo.svg` from the working directory. To pull the latest list:
+Both modes read `data/awesome-lean.md`, `static/site.css` and `brand/logo.svg` from the working directory, and the community's posts from `data/community.json`. To pull the latest list and posts:
 
 ```sh
 scripts/sync-awesome.sh
+DISCORD_BOT_TOKEN=... .lake/build/bin/leangineering sync-community
 ```
+
+`sync-community` reads the forum as the Leangineer bot, which needs View Channels and Read Message History on the forum, and the Message Content intent. The deploy runs both syncs daily, with the token from the `DISCORD_BOT_TOKEN` secret. Without a token, or if Discord fails, the committed snapshot is used.
 
 
 ## End-to-end tests
