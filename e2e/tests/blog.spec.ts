@@ -14,16 +14,17 @@ const test = base.extend<{ consoleErrors: string[] }>({
   ],
 });
 
-test("the home page links to the blog, which lists its posts", async ({ page }) => {
+test("the home page links to the writing page, which lists the site's posts", async ({ page }) => {
   await page.goto("./");
-  await page.getByRole("link", { name: "Blog" }).first().click();
+  await page.getByRole("link", { name: "Writing" }).first().click();
   await expect(page).toHaveURL(/\/blog\/?$/);
-  await expect(page.locator(".post-item").first()).toBeVisible();
+  await expect(page.locator(".post-item:not(.shared)").first()).toBeVisible();
 });
 
 test("a post renders as a paper", async ({ page }) => {
   await page.goto("blog/");
-  await page.locator(".post-title").first().click();
+  // The site's own posts, not the ones shared from elsewhere.
+  await page.locator(".post-item:not(.shared) .post-title").first().click();
   await expect(page).toHaveURL(/\/blog\/[^/]+\/?$/);
 
   await expect(page.locator(".abstract")).toBeVisible();

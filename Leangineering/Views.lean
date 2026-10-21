@@ -118,10 +118,8 @@ def layout (pageTitle description : String) (content : List (Node .flow))
         nav [
           a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
-            a { href := "blog" } [ "Blog" ],
-            a { href := "community" } [ "Community" ],
+            a { href := "blog" } [ "Writing" ],
             a { href := "awesome" } [ "Directory" ],
-            a { href := sourceUrl } [ "Source" ],
             a { href := discordUrl, class_ := "nav-cta" } [ "Discord" ],
             button [] { type := "button", class_ := "theme-toggle" }
               [("aria-label", "Theme: system, light or dark"), ("title", "Theme: system, light or dark"),
@@ -289,10 +287,51 @@ def postItem (post : Post) : Node .listItem :=
     p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }
   ] { class_ := "post-item" }
 
-/-- How many posts the home page lists before pointing to the blog. -/
+/-! ## From the Discord
+
+Posts shared in `#blog-posts` join the site's own on the writing page, and projects shared in
+`#projects-and-repos` head the directory. They link to where they were published. Everything here
+comes from other people, so it's only ever text, which lean-html escapes.
+-/
+
+/-- `carlo-hamalainen.net` for `https://www.carlo-hamalainen.net/2026/10/18/post/`. -/
+def siteName (url : String) : String :=
+  let h := Discord.host url
+  if h.startsWith "www." then (h.drop 4).toString else h
+
+/-- A post shared in `#blog-posts`: its title, linking to where it was published, who shared it,
+on which site and when, and how it starts. -/
+def sharedPostItem (post : CommunityPost) : Node .listItem :=
+  li (([
+    a { href := post.url, class_ := "post-title" } [ (post.title : Node .phrasing) ],
+    span [ (s!"{post.author} · {siteName post.url} · {Post.formatDate post.date}" : Node .phrasing) ]
+      { class_ := "post-meta" }
+  ] : List (Node .flow)) ++
+    (if post.excerpt.isEmpty then [] else [p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }]))
+    { class_ := "post-item shared" }
+
+/-- The site's posts and the ones shared in `#blog-posts`, newest first. -/
+def writingItems (posts : Array Post) (shared : Array CommunityPost) : List (Node .listItem) :=
+  let items := posts.map (fun p => (p.date, postItem p)) ++ shared.map (fun p => (p.date, sharedPostItem p))
+  (items.qsort (·.1 > ·.1)).toList.map (·.2)
+
+/-- A project shared in `#projects-and-repos`, set like a directory entry: its name, who shared it
+and when, and its repository, or else its site. -/
+def projectItem (project : CommunityPost) : Node .listItem :=
+  li [
+    a { href := project.url, class_ := "entry-name" } [ (project.title : Node .phrasing) ],
+    span [ (s!"{project.author} · {Post.formatDate project.date}" : Node .phrasing) ] { class_ := "entry-desc" },
+    span [ ((githubRepo? project.url).getD (siteName project.url) : Node .phrasing) ] { class_ := "entry-repo" }
+  ] { class_ := "entry" }
+
+/-- How many recent projects the directory shows. Older ones make their way into the curated list. -/
+def recentProjectCount : Nat := 5
+
+/-- How many posts, and recent projects, the home page lists before pointing to the full page. -/
 def homePostCount : Nat := 3
 
-def homePage (site : Awesome) (posts : Array Post) (mode : Mode) : String :=
+def homePage (site : Awesome) (posts : Array Post) (community : Community) (mode : Mode) : String :=
+  let writing := writingItems posts community.writing
   layout "Leangineering: Lean 4 for software engineers"
     "A community for people who use Lean 4 to build software." (mode := mode) [
     div [
@@ -306,18 +345,22 @@ def homePage (site : Awesome) (posts : Array Post) (mode : Mode) : String :=
       p [ "Start with the ", a { href := "awesome" } [ "directory of Lean libraries and tools" ], ", or read ",
           a { href := "blog" } [ "writing about real projects" ], " built with them." ]
     ] { class_ := "abstract" },
-    section_ [
+    section_ ([
       sectionHeading 1 [ "The directory" ],
-      p [ (s!"Awesome Lean Programming is a directory of {site.entryCount} libraries, tools and projects for building software in Lean." : Node .phrasing) ],
+      p [ (s!"Awesome Lean Programming is a directory of {site.entryCount} libraries, tools and projects for building software in Lean." : Node .phrasing) ]
+    ] ++ (if community.projects.isEmpty then [] else [
+      h3 [ "Recent projects" ] { class_ := "group-label" },
+      ul ((community.projects.toList.take homePostCount).map projectItem) { class_ := "entries" }
+    ]) ++ [
+      p [ "Built something in Lean? Share it in #projects-and-repos on the ", a { href := discordUrl } [ "Discord" ], "." ],
       p [ a { href := "awesome", class_ := "button" } [ "Browse the directory" ] ]
-    ],
+    ]),
     section_ ([
       sectionHeading 2 [ "Writing" ],
-      if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
-      else ul ((posts.toList.take homePostCount).map postItem) { class_ := "post-list" },
-      p [ "If you've built something in Lean, share it on the ", a { href := discordUrl } [ "Discord" ],
-          " or add it to the ", a { href := "awesome" } [ "directory" ], "." ]
-    ] ++ (if posts.size > homePostCount then [p [ a { href := "blog", class_ := "button" } [ "All posts" ] ]] else [])),
+      if writing.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
+      else ul (writing.take homePostCount) { class_ := "post-list" },
+      p [ "Written about Lean? Share it in #blog-posts on the ", a { href := discordUrl } [ "Discord" ], "." ]
+    ] ++ (if writing.length > homePostCount then [p [ a { href := "blog", class_ := "button" } [ "All writing" ] ]] else [])),
     section_ [
       sectionHeading 3 [ "How this site is built" ],
       div [
@@ -343,7 +386,7 @@ def homePage (site : Awesome) (posts : Array Post) (mode : Mode) : String :=
     ]
   ]
 
-def awesomePage (site : Awesome) (mode : Mode) : String :=
+def awesomePage (site : Awesome) (projects : Array CommunityPost) (mode : Mode) : String :=
   layout "Awesome Lean Programming: libraries and tools for Lean 4"
     s!"A curated directory of {site.entryCount} Lean 4 libraries, tools and projects for programmers."
     (mode := mode) ([
@@ -359,7 +402,13 @@ def awesomePage (site : Awesome) (mode : Mode) : String :=
           " repo. Missing something? Open a PR there and it shows up here too, or mention it on the ",
           a { href := discordUrl } [ "Discord" ], "." ]
     ]) { class_ := "abstract" }
-  ] ++ [
+  ] ++ (if projects.isEmpty then [] else [
+    section_ [
+      h2 [ "Recent projects" ] { class_ := "toc-title" },
+      ul ((projects.toList.take recentProjectCount).map projectItem) { class_ := "entries" },
+      p [ "Shared in #projects-and-repos on the ", a { href := discordUrl } [ "Discord" ], "." ] { class_ := "note" }
+    ] { class_ := "recent-projects" }
+  ]) ++ [
     searchBox mode,
     contents site,
     results site "" (filter := !mode.interactive)
@@ -650,15 +699,18 @@ def notesSection (post : Post) : List (Node .flow) :=
               Node.toFlow) { id := s!"fn-{note.name}" })
     ] { class_ := "notes" }]
 
-def blogPage (posts : Array Post) (mode : Mode) : String :=
-  layout "Blog: Leangineering" "Writing about building software in Lean 4." (mode := mode) [
+def blogPage (posts : Array Post) (shared : Array CommunityPost) (mode : Mode) : String :=
+  let writing := writingItems posts shared
+  layout "Writing: Leangineering" "Writing about building software in Lean 4, from this site and the community."
+    (mode := mode) [
     div [
-      h1 [ "Blog" ],
-      p [ "Writing about building software in Lean" ] { class_ := "venue" }
+      h1 [ "Writing" ],
+      p [ "About building software in Lean, from this site and the community" ] { class_ := "venue" }
     ] { class_ := "title-block" },
-    if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
-    else ul (posts.toList.map postItem) { class_ := "post-list" },
-    discordInvite
+    if writing.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
+    else ul writing { class_ := "post-list" },
+    p [ "Have you written about Lean? Share it in #blog-posts on the ", a { href := discordUrl } [ "Discord" ],
+        " and it shows up here." ]
   ]
 
 def postPage (post : Post) (mode : Mode) : String :=
@@ -667,7 +719,7 @@ def postPage (post : Post) (mode : Mode) : String :=
     div [
       h1 [ (post.title : Node .phrasing) ],
       p [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing), " · ",
-          a { href := "blog" } [ "Blog" ] ] { class_ := "venue" }
+          a { href := "blog" } [ "Writing" ] ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [
       h2 [ "Abstract" ] { class_ := "abstract-title" },
@@ -676,33 +728,5 @@ def postPage (post : Post) (mode : Mode) : String :=
     article (paperBody post) { class_ := "post" },
     discordInvite
   ] ++ notesSection post)
-
-/-! ## Community
-
-Posts shared in the Discord's `#blog-posts` forum, linked to where they were published. Everything here
-comes from other people, so it's only ever text, which lean-html escapes.
--/
-
-/-- A shared post: its title, linking to where it was published, who shared it and when, and how
-it starts. -/
-def communityPostItem (post : CommunityPost) : Node .listItem :=
-  li (([
-    a { href := post.url, class_ := "post-title" } [ (post.title : Node .phrasing) ],
-    span [ (s!"{post.author} · {Post.formatDate post.date}" : Node .phrasing) ] { class_ := "post-meta" }
-  ] : List (Node .flow)) ++
-    (if post.excerpt.isEmpty then [] else [p [ (post.excerpt : Node .phrasing) ] { class_ := "post-excerpt" }]))
-    { class_ := "post-item" }
-
-def communityPage (posts : Array CommunityPost) (mode : Mode) : String :=
-  layout "Community: Leangineering" "Writing about Lean from the Leangineering community." (mode := mode) [
-    div [
-      h1 [ "From the community" ],
-      p [ "Writing about Lean, shared on the Discord" ] { class_ := "venue" }
-    ] { class_ := "title-block" },
-    if posts.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
-    else ul (posts.toList.map communityPostItem) { class_ := "post-list" },
-    p [ "Have you written about Lean? Share it in #blog-posts on the ", a { href := discordUrl } [ "Discord" ],
-        " and it shows up here." ]
-  ]
 
 end Leangineering.Views

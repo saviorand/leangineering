@@ -3,14 +3,21 @@ import Lean.Data.Json
 /-!
 # Posts from the community
 
-The community page lists the posts in the `#blog-posts` forum on the Leangineer Discord. Each forum post is
-a thread whose first message holds a link, and Discord's preview of that link gives the title and
-description. A post without a link, such as a question, is skipped, and so is a post linking to
-this site, since the blog page already lists those, and a post tagged
-`Unlisted`, which is how an author keeps their post off the page. The forum's tag should be an
-ordinary one, not a moderated one, so that authors can apply it to their own posts.
+Two forums on the Leangineer Discord feed the site. Posts in `#blog-posts` join the site's own on
+the writing page, and posts in `#projects-and-repos` are the directory's recent projects. Each
+forum post is a thread whose first message holds a link.
 
-`leangineering sync-community` reads the forum through Discord's HTTP API as a bot, with the
+- A writing post is titled and described by Discord's preview of its link, which carries the
+  article's own title and summary.
+- A project is titled by the forum post's own title. Previews of repositories are mostly GitHub's
+  boilerplate, and many links have none.
+
+A post without a link, such as a question, is skipped, and so is a post linking to this site,
+whose own posts are already on the writing page. A post tagged `Unlisted` is skipped too: that's
+how an author keeps their post off the site. The tag should be an ordinary one, not a moderated
+one, so that authors can apply it to their own posts.
+
+`leangineering sync-community` reads both forums through Discord's HTTP API as a bot, with the
 bot's token in `DISCORD_BOT_TOKEN`, and saves the posts to `data/community.json`. The site reads
 that snapshot, as it reads the awesome list's readme, so a build never needs the token or waits on
 Discord. A sync that fails keeps the last snapshot.
@@ -24,16 +31,24 @@ namespace Leangineering
 
 open Lean (Json FromJson ToJson fromJson? toJson)
 
-/-- A post shared in the forum, linking to where it was published. -/
+/-- A post shared in one of the forums, linking to where it was published. -/
 structure CommunityPost where
   title : String
   url : String
   /-- `YYYY-MM-DD`, when it was shared. -/
   date : String
-  /-- Plain text. -/
+  /-- Plain text, or empty. -/
   excerpt : String
   /-- Who shared it. -/
   author : String
+  deriving Inhabited, FromJson, ToJson
+
+/-- What the forums hold, each newest first. -/
+structure Community where
+  /-- From `#blog-posts`. -/
+  writing : Array CommunityPost
+  /-- From `#projects-and-repos`. -/
+  projects : Array CommunityPost
   deriving Inhabited, FromJson, ToJson
 
 namespace Discord
@@ -101,7 +116,7 @@ def host (url : String) : String :=
   | [_, rest] => (((rest.splitOn "/").headD "").splitOn ":").headD "" |>.toLower
   | _ => ""
 
-/-- Whether a URL is on this site, whose own posts are on the blog page. -/
+/-- Whether a URL is on this site, whose own posts are on the writing page. -/
 def isThisSite (url : String) : Bool :=
   let h := host url
   h == "leangineer.com" || h.endsWith ".leangineer.com"
@@ -137,18 +152,30 @@ def dateOf? (timestamp : String) : Option String :=
     if 1 ≤ m && m ≤ 12 && 1 ≤ d && d ≤ 31 then some s!"{y}-{pad m}-{pad d}" else none
   | _ => none
 
-/-- The post a forum thread shares: the first link in its first message, titled by Discord's
-preview of that link, or else by the thread's own title. None if that link is to this site. -/
-def post? (thread : Thread) (message : Message) : Option CommunityPost := do
+/-- What a forum thread shares: the first link in its first message, titled by the thread, with
+who shared it and when. None if there's no link, or the link is to this site. -/
+def shared? (thread : Thread) (message : Message) : Option CommunityPost := do
   let url ← (links message.content).head?
   if isThisSite url then none
-  let preview := message.embeds.find? (·.url.map normalizeUrl == some (normalizeUrl url))
-  let title := collapse ((preview.bind (·.title)).getD thread.name)
   let date ← dateOf? message.timestamp
+  let title := collapse thread.name
   if title.isEmpty then none
-  else some { title, url, date,
-              excerpt := excerptOf ((preview.bind (·.description)).getD ""),
+  else some { title, url, date, excerpt := "",
               author := collapse (message.author.global_name.getD message.author.username) }
+
+/-- A post in `#blog-posts`, titled and described by Discord's preview of its link when there is
+one. -/
+def writingPost? (thread : Thread) (message : Message) : Option CommunityPost := do
+  let post ← shared? thread message
+  let some preview := message.embeds.find? (·.url.map normalizeUrl == some (normalizeUrl post.url))
+    | return post
+  let title := collapse (preview.title.getD "")
+  return { post with title := if title.isEmpty then post.title else title,
+                     excerpt := excerptOf (preview.description.getD "") }
+
+/-- A post in `#projects-and-repos`, titled by the forum post itself. -/
+def projectPost? (thread : Thread) (message : Message) : Option CommunityPost :=
+  shared? thread message
 
 /-! ## Reading the forum -/
 
@@ -200,8 +227,10 @@ def get [FromJson α] (token path : String) : IO α := do
 /-- An `archive_timestamp` as a query parameter. -/
 def encodeTimestamp (s : String) : String := (s.replace ":" "%3A").replace "+" "%2B"
 
-/-- The forum's posts, open or archived, newest first, apart from those tagged `Unlisted`. -/
-def fetchPosts (token forumId : String) : IO (Array CommunityPost) := do
+/-- A forum's posts, open or archived, newest first, as `toPost` reads them, apart from those
+tagged `Unlisted`. -/
+def fetchPosts (token forumId : String) (toPost : Thread → Message → Option CommunityPost) :
+    IO (Array CommunityPost) := do
   let forum : Forum ← get token s!"/channels/{forumId}"
   let unlisted := (forum.available_tags.getD #[]).filter (·.name.toLower == "unlisted") |>.map (·.id)
   let active : Threads ← get token s!"/guilds/{forum.guild_id}/threads/active"
@@ -219,35 +248,37 @@ def fetchPosts (token forumId : String) : IO (Array CommunityPost) := do
     if (thread.applied_tags.getD #[]).any unlisted.contains then continue
     -- A forum post's first message has the thread's ID.
     let some (message : Message) ← get? token s!"/channels/{thread.id}/messages/{thread.id}" | continue
-    if let some post := post? thread message then posts := posts.push post
+    if let some post := toPost thread message then posts := posts.push post
   return posts.qsort (·.date > ·.date)
 
 end Discord
 
 /-! ## The snapshot -/
 
-/-- Reads the forum's posts into `snapshot`. Without a token, or if Discord fails, the last
-snapshot stays. -/
-def syncCommunity (forumId : String) (snapshot : System.FilePath) : IO Unit := do
+/-- Reads both forums into `snapshot`. Without a token, or if Discord fails, the last snapshot
+stays. -/
+def syncCommunity (writingForum projectsForum : String) (snapshot : System.FilePath) : IO Unit := do
   let token := (← IO.getEnv "DISCORD_BOT_TOKEN").getD ""
   if token.isEmpty then
     IO.eprintln s!"warning: DISCORD_BOT_TOKEN isn't set; keeping {snapshot}"
     return
   try
-    let posts ← Discord.fetchPosts token forumId
-    IO.FS.writeFile snapshot ((toJson posts).pretty ++ "\n")
-    IO.println s!"{posts.size} posts from the forum in {snapshot}"
+    let community : Community := {
+      writing := ← Discord.fetchPosts token writingForum Discord.writingPost?
+      projects := ← Discord.fetchPosts token projectsForum Discord.projectPost? }
+    IO.FS.writeFile snapshot ((toJson community).pretty ++ "\n")
+    IO.println s!"{community.writing.size} posts and {community.projects.size} projects in {snapshot}"
   catch e =>
-    IO.eprintln s!"warning: reading the forum failed: {e}; keeping {snapshot}"
+    IO.eprintln s!"warning: reading the forums failed: {e}; keeping {snapshot}"
 
-/-- The posts in `snapshot`, newest first. A missing or unreadable snapshot is a warning, and the
-rest of the site still builds. -/
-def loadCommunity (snapshot : System.FilePath) : IO (Array CommunityPost) := do
-  unless ← snapshot.pathExists do return #[]
-  match Json.parse (← IO.FS.readFile snapshot) >>= fromJson? (α := Array CommunityPost) with
-  | .ok posts => return posts.qsort (·.date > ·.date)
+/-- The forums' posts in `snapshot`, newest first. A missing or unreadable snapshot is a warning,
+and the rest of the site still builds. -/
+def loadCommunity (snapshot : System.FilePath) : IO Community := do
+  unless ← snapshot.pathExists do return { writing := #[], projects := #[] }
+  match Json.parse (← IO.FS.readFile snapshot) >>= fromJson? (α := Community) with
+  | .ok c => return { writing := c.writing.qsort (·.date > ·.date), projects := c.projects.qsort (·.date > ·.date) }
   | .error e =>
     IO.eprintln s!"warning: {snapshot}: {e}"
-    return #[]
+    return { writing := #[], projects := #[] }
 
 end Leangineering

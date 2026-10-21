@@ -16,7 +16,6 @@ route_table Site
   [ home := "/",
     blog := "/blog",
     post := "/blog/:slug:String",
-    community := "/community",
     awesome := "/awesome",
     search := "/search",
     category := "/awesome/:slug:String",
@@ -44,17 +43,16 @@ def searchHandler (site : Awesome) (req : Request Body.Stream) : ContextAsync (R
 
 /-- `assets` are the files in `static/blog/`, read at startup, so a request can only ever name one
 of them. -/
-def app (site : Awesome) (posts : Array Post) (community : Array CommunityPost)
+def app (site : Awesome) (posts : Array Post) (community : Community)
     (assets : Array (String × ByteArray)) (css : String) (mode : Views.Mode) : StatelessHandler :=
   let notFound : Result := fun _ => Response.notFound.html (Views.notFoundPage mode)
-  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site posts mode)),
-    .get Site.patterns.blog (fun _ => Response.ok.html (Views.blogPage posts mode)),
+  [ .get Site.patterns.home (fun _ => Response.ok.html (Views.homePage site posts community mode)),
+    .get Site.patterns.blog (fun _ => Response.ok.html (Views.blogPage posts community.writing mode)),
     .get Site.patterns.post (fun slug req =>
       match posts.find? (·.slug == slug) with
       | some post => Response.ok.html (Views.postPage post mode)
       | none => notFound req),
-    .get Site.patterns.community (fun _ => Response.ok.html (Views.communityPage community mode)),
-    .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site mode)),
+    .get Site.patterns.awesome (fun _ => Response.ok.html (Views.awesomePage site community.projects mode)),
     .get Site.patterns.search (searchHandler site),
     .get Site.patterns.category (fun slug req =>
       match site.find? slug with

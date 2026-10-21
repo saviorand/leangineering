@@ -54,7 +54,7 @@ jobs:
         run: scripts/sync-awesome.sh
 
       # If Discord can't be read, the snapshot committed in `data/community.json` is used.
-      - name: Pull the latest posts from the Discord's blogs forum
+      - name: Pull the latest posts from the Discord's forums
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
         run: .lake/build/bin/leangineering sync-community

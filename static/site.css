@@ -292,6 +292,7 @@ figcaption p { margin: 0; }
 /* ── Table of contents ─────────────────────────────── */
 
 .toc { margin-bottom: 64px; }
+.recent-projects { margin-bottom: 48px; }
 .toc-title {
   font-size: 16px;
   font-variant: small-caps;

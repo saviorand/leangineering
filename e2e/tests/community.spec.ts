@@ -14,17 +14,27 @@ const test = base.extend<{ consoleErrors: string[] }>({
   ],
 });
 
-// These read the forum's snapshot committed in `data/community.json`.
+// These read the forums' snapshot committed in `data/community.json`.
 
-test("the community page lists posts shared on the Discord, linking to where they were published", async ({ page }) => {
-  await page.goto("./");
-  await page.getByRole("link", { name: "Community" }).first().click();
-  await expect(page).toHaveURL(/\/community\/?$/);
+test("the writing page mixes the site's posts with posts shared on the Discord", async ({ page }) => {
+  await page.goto("blog/");
+  await expect(page.locator(".post-item:not(.shared)").first()).toBeVisible();
 
-  await expect(page.locator(".post-item").first()).toBeVisible();
-  for (const title of await page.locator(".post-title").all()) {
+  const shared = page.locator(".post-item.shared");
+  await expect(shared.first()).toBeVisible();
+  for (const title of await shared.locator(".post-title").all()) {
     expect(await title.getAttribute("href")).toMatch(/^https?:\/\//);
   }
-  // Who shared it, and when.
-  await expect(page.locator(".post-meta").first()).toHaveText(/^.+ · [A-Z][a-z]+ \d{1,2}, \d{4}$/);
+  // Who shared it, on which site, and when.
+  await expect(shared.locator(".post-meta").first()).toHaveText(/^.+ · [a-z0-9.-]+ · [A-Z][a-z]+ \d{1,2}, \d{4}$/);
+});
+
+test("the directory starts with at most five recent projects from the Discord", async ({ page }) => {
+  await page.goto("awesome/");
+  const projects = page.locator(".recent-projects li.entry");
+  await expect(projects.first()).toBeVisible();
+  expect(await projects.count()).toBeLessThanOrEqual(5);
+  for (const name of await projects.locator(".entry-name").all()) {
+    expect(await name.getAttribute("href")).toMatch(/^https?:\/\//);
+  }
 });

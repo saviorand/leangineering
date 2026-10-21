@@ -6,14 +6,13 @@ Source for [leangineer.com](https://leangineer.com), a community and learning re
 
 ## What's here
 
-- `/awesome`: the [awesome-lean-programming](https://github.com/saviorand/awesome-lean-programming) list as a browsable directory, with a page per category and live search.
-- `/blog`: posts written as maths papers.
-- `/community`: posts about Lean shared in the `#blog-posts` forum on the [Discord](https://discord.gg/ACKNs7ZJPj).
+- `/awesome`: the [awesome-lean-programming](https://github.com/saviorand/awesome-lean-programming) list as a browsable directory, with a page per category and live search, headed by the five projects most recently shared in `#projects-and-repos` on the [Discord](https://discord.gg/ACKNs7ZJPj).
+- `/blog`: writing. The site's own posts, written as maths papers, and posts shared in the Discord's `#blog-posts`.
 - Guides are coming next.
 
 The directory is generated from the awesome-lean-programming readme, which stays the single source of truth. To change an entry, open a pull request there.
 
-The community page lists every post in the Discord's `#blog-posts` forum that links somewhere, using Discord's preview of the link for the title and description. An author keeps a post off the page by giving it the forum's `Unlisted` tag.
+Every post in those two forums that links somewhere appears on the site, unless it links to this site. Shared writing takes its title and description from Discord's preview of the link, and a project takes the forum post's own title. An author keeps a post off the site by giving it the forum's `Unlisted` tag.
 
 ## Stack
 
@@ -44,7 +43,7 @@ scripts/sync-awesome.sh
 DISCORD_BOT_TOKEN=... .lake/build/bin/leangineering sync-community
 ```
 
-`sync-community` reads the forum as the Leangineer bot, which needs View Channels and Read Message History on the forum, and the Message Content intent. The deploy runs both syncs daily, with the token from the `DISCORD_BOT_TOKEN` secret. Without a token, or if Discord fails, the committed snapshot is used.
+`sync-community` reads both forums as the Leangineer bot, which needs View Channels and Read Message History on the forums, and the Message Content intent. The deploy runs both syncs daily, with the token from the `DISCORD_BOT_TOKEN` secret. Without a token, or if Discord fails, the committed snapshot is used.
 
 
 ## End-to-end tests

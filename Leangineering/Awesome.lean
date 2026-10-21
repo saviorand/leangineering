@@ -55,16 +55,18 @@ def slugify (s : String) : String :=
 def containsSubstr (haystack needle : String) : Bool :=
   needle.isEmpty || (haystack.splitOn needle).length > 1
 
-namespace Entry
-
-/-- `owner/repo` for GitHub links. -/
-def githubRepo? (e : Entry) : Option String :=
+/-- `owner/repo` for a GitHub link. -/
+def githubRepo? (url : String) : Option String :=
   let prefix_ := "https://github.com/"
-  if e.url.startsWith prefix_ then
-    match ((e.url.drop prefix_.length).toString.splitOn "/").filter (!·.isEmpty) with
+  if url.startsWith prefix_ then
+    match ((url.drop prefix_.length).toString.splitOn "/").filter (!·.isEmpty) with
     | owner :: repo :: _ => some s!"{owner}/{repo}"
     | _ => none
   else none
+
+namespace Entry
+
+def githubRepo? (e : Entry) : Option String := Leangineering.githubRepo? e.url
 
 def searchText (e : Entry) (c : Category) : String :=
   s!"{e.name} {plainTextOfInlines e.description} {c.title}".toLower

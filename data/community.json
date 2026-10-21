@@ -1,12 +1,34 @@
-[{"url": "https://carlo-hamalainen.net/2026/10/18/sungrow-lean-part2/",
-  "title": "Sungrow in Lean, part 2",
-  "excerpt":
-  "In part 1 we implemented a simple Modbus TCP library and read a single sensor from the Sungrow inverter. Our next step is to parse the full list of registers so that we can read all the values of interest like real time solar production, battery state of charge, grid draw, etc. YAML and JSON data…",
-  "date": "2026-10-18",
-  "author": "carlo_h_"},
- {"url": "https://carlo-hamalainen.net/2026/10/16/sungrow-lean-part1/",
-  "title": "Sungrow in Lean, part 1",
-  "excerpt":
-  "What better way to learn Lean, than to implement a bespoke home battery management system? I’m going to do that in this series of blog posts, porting my Go implementation over to Lean4. The UI will naturally use the Lean Datastar SDK that I developed with Valentin Erokhin. Also check out…",
-  "date": "2026-10-16",
-  "author": "carlo_h_"}]
+{"writing":
+ [{"url": "https://carlo-hamalainen.net/2026/10/18/sungrow-lean-part2/",
+   "title": "Sungrow in Lean, part 2",
+   "excerpt":
+   "In part 1 we implemented a simple Modbus TCP library and read a single sensor from the Sungrow inverter. Our next step is to parse the full list of registers so that we can read all the values of interest like real time solar production, battery state of charge, grid draw, etc. YAML and JSON data…",
+   "date": "2026-10-18",
+   "author": "carlo_h_"},
+  {"url": "https://carlo-hamalainen.net/2026/10/16/sungrow-lean-part1/",
+   "title": "Sungrow in Lean, part 1",
+   "excerpt":
+   "What better way to learn Lean, than to implement a bespoke home battery management system? I’m going to do that in this series of blog posts, porting my Go implementation over to Lean4. The UI will naturally use the Lean Datastar SDK that I developed with Valentin Erokhin. Also check out…",
+   "date": "2026-10-16",
+   "author": "carlo_h_"}],
+ "projects":
+ [{"url": "https://github.com/paulbutcher/lean-bump",
+   "title": "Dependabot-ish for Lean",
+   "excerpt": "",
+   "date": "2026-10-20",
+   "author": "petrolheadpb"},
+  {"url": "https://github.com/paulbutcher/lean-routing",
+   "title": "LeanIO or lean-routing",
+   "excerpt": "",
+   "date": "2026-10-16",
+   "author": "petrolheadpb"},
+  {"url": "https://data-star.dev/reference/sdks#lean",
+   "title": "Datastar Lean SDK",
+   "excerpt": "",
+   "date": "2026-10-13",
+   "author": "a2svior"},
+  {"url": "https://colouring-lean.hamalainen.dev/",
+   "title": "Colouring with Lean",
+   "excerpt": "",
+   "date": "2026-10-12",
+   "author": "carlo_h_"}]}

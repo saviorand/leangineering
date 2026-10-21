@@ -4,7 +4,7 @@ import Leangineering
     leangineering [serve]      # http://127.0.0.1:8080 (set PORT, and HOST=0.0.0.0 to listen publicly)
     leangineering build [dir]  # static site in `dir` (default `dist`), searched in the browser
                                # set BASE_PATH=/leangineering/ to host under a subpath
-    leangineering sync-community  # read the Discord's blogs forum into `data/community.json`
+    leangineering sync-community  # read the Discord's forums into `data/community.json`
                                   # needs the bot's token in DISCORD_BOT_TOKEN
 
 Both read `data/awesome-lean.md`, `static/site.css` and `brand/logo.svg` from the working directory,
@@ -23,8 +23,9 @@ def logoPath : System.FilePath := "brand/logo.svg"
 def postsDir : System.FilePath := "posts"
 def assetsDir : System.FilePath := "static/blog"
 def communityPath : System.FilePath := "data/community.json"
-/-- The `blog-posts` forum on the Leangineer Discord. -/
-def forumId : String := "1557652153399509052"
+/-- The forums on the Leangineer Discord whose posts the site lists. -/
+def blogPostsForum : String := "1557652153399509052"
+def projectsForum : String := "1557652228683071508"
 
 /-- Every file in `static/blog/`, by name. -/
 def loadAssets : IO (Array (String × ByteArray)) := do
@@ -36,21 +37,20 @@ def writePage (dir : System.FilePath) (path : String) (content : String) : IO Un
   if let some parent := file.parent then IO.FS.createDirAll parent
   IO.FS.writeFile file content
 
-def build (site : Awesome) (posts : Array Post) (community : Array CommunityPost)
+def build (site : Awesome) (posts : Array Post) (community : Community)
     (assets : Array (String × ByteArray)) (css favicon : String) (dir : System.FilePath) : IO Unit := do
   let posts := if (← IO.getEnv "DRAFTS") == some "1" then posts else posts.filter (!·.draft)
   let base := (← IO.getEnv "BASE_PATH").getD "/"
   let mode : Views.Mode :=
     { interactive := false, base := if base.endsWith "/" then base else base ++ "/", favicon }
-  writePage dir "index.html" (Views.homePage site posts mode)
-  writePage dir "blog/index.html" (Views.blogPage posts mode)
+  writePage dir "index.html" (Views.homePage site posts community mode)
+  writePage dir "blog/index.html" (Views.blogPage posts community.writing mode)
   for post in posts do
     writePage dir s!"blog/{post.slug}/index.html" (Views.postPage post mode)
-  writePage dir "community/index.html" (Views.communityPage community mode)
   IO.FS.createDirAll (dir / "static" / "blog")
   for (file, bytes) in assets do
     IO.FS.writeBinFile (dir / "static" / "blog" / file) bytes
-  writePage dir "awesome/index.html" (Views.awesomePage site mode)
+  writePage dir "awesome/index.html" (Views.awesomePage site community.projects mode)
   for c in site.categories do
     writePage dir s!"awesome/{c.slug}/index.html" (Views.categoryPage site c mode)
   writePage dir "404.html" (Views.notFoundPage mode)
@@ -58,9 +58,9 @@ def build (site : Awesome) (posts : Array Post) (community : Array CommunityPost
   writePage dir "static/search.js" (← IO.FS.readFile "static/search.js")
   -- GitHub Pages: serve files as they are, without Jekyll.
   writePage dir ".nojekyll" ""
-  IO.println s!"Wrote {site.categories.size + posts.size + 5} pages to {dir} (base {mode.base})"
+  IO.println s!"Wrote {site.categories.size + posts.size + 4} pages to {dir} (base {mode.base})"
 
-def serve (site : Awesome) (posts : Array Post) (community : Array CommunityPost)
+def serve (site : Awesome) (posts : Array Post) (community : Community)
     (assets : Array (String × ByteArray)) (css favicon : String) : IO Unit := Async.block do
   let port := ((← IO.getEnv "PORT").bind String.toNat?).getD 8080
   let public_ := (← IO.getEnv "HOST") == some "0.0.0.0"
@@ -71,7 +71,7 @@ def serve (site : Awesome) (posts : Array Post) (community : Array CommunityPost
 
 def main (args : List String) : IO UInt32 := do
   if args == ["sync-community"] then
-    syncCommunity forumId communityPath
+    syncCommunity blogPostsForum projectsForum communityPath
     return 0
   let site := parse (← IO.FS.readFile dataPath)
   let css ← IO.FS.readFile cssPath
