@@ -20,7 +20,7 @@ const search = (page: Page) => page.getByRole("searchbox", { name: "Search the d
 
 test("the home page links to the directory", async ({ page }) => {
   await page.goto("./");
-  await page.getByRole("link", { name: "Directory" }).first().click();
+  await page.getByRole("link", { name: "Repos" }).first().click();
   await expect(page).toHaveURL(/\/awesome\/?$/);
   await expect(entries(page).first()).toBeVisible();
 });

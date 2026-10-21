@@ -14,9 +14,9 @@ const test = base.extend<{ consoleErrors: string[] }>({
   ],
 });
 
-test("the home page links to the writing page, which lists the site's posts", async ({ page }) => {
+test("the home page links to the articles page, which lists the site's posts", async ({ page }) => {
   await page.goto("./");
-  await page.getByRole("link", { name: "Writing" }).first().click();
+  await page.getByRole("link", { name: "Articles" }).first().click();
   await expect(page).toHaveURL(/\/blog\/?$/);
   await expect(page.locator(".post-item:not(.shared)").first()).toBeVisible();
 });

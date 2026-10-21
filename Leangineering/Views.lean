@@ -118,8 +118,8 @@ def layout (pageTitle description : String) (content : List (Node .flow))
         nav [
           a { href := "./", class_ := "brand" } [ "Leangineering" ],
           span [
-            a { href := "blog" } [ "Writing" ],
-            a { href := "awesome" } [ "Directory" ],
+            a { href := "blog" } [ "Articles" ],
+            a { href := "awesome" } [ "Repos" ],
             a { href := discordUrl, class_ := "nav-cta" } [ "Discord" ],
             button [] { type := "button", class_ := "theme-toggle" }
               [("aria-label", "Theme: system, light or dark"), ("title", "Theme: system, light or dark"),
@@ -346,21 +346,21 @@ def homePage (site : Awesome) (posts : Array Post) (community : Community) (mode
           a { href := "blog" } [ "writing about real projects" ], " built with them." ]
     ] { class_ := "abstract" },
     section_ ([
-      sectionHeading 1 [ "The directory" ],
+      sectionHeading 1 [ "Repos" ],
       p [ (s!"Awesome Lean Programming is a directory of {site.entryCount} libraries, tools and projects for building software in Lean." : Node .phrasing) ]
     ] ++ (if community.projects.isEmpty then [] else [
       h3 [ "Recent projects" ] { class_ := "group-label" },
       ul ((community.projects.toList.take homePostCount).map projectItem) { class_ := "entries" }
     ]) ++ [
       p [ "Built something in Lean? Share it in #projects-and-repos on the ", a { href := discordUrl } [ "Discord" ], "." ],
-      p [ a { href := "awesome", class_ := "button" } [ "Browse the directory" ] ]
+      p [ a { href := "awesome", class_ := "button" } [ "Browse the repos" ] ]
     ]),
     section_ ([
-      sectionHeading 2 [ "Writing" ],
+      sectionHeading 2 [ "Articles" ],
       if writing.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
       else ul (writing.take homePostCount) { class_ := "post-list" },
       p [ "Written about Lean? Share it in #blog-posts on the ", a { href := discordUrl } [ "Discord" ], "." ]
-    ] ++ (if writing.length > homePostCount then [p [ a { href := "blog", class_ := "button" } [ "All writing" ] ]] else [])),
+    ] ++ (if writing.length > homePostCount then [p [ a { href := "blog", class_ := "button" } [ "All articles" ] ]] else [])),
     section_ [
       sectionHeading 3 [ "How this site is built" ],
       div [
@@ -701,10 +701,10 @@ def notesSection (post : Post) : List (Node .flow) :=
 
 def blogPage (posts : Array Post) (shared : Array CommunityPost) (mode : Mode) : String :=
   let writing := writingItems posts shared
-  layout "Writing: Leangineering" "Writing about building software in Lean 4, from this site and the community."
+  layout "Articles: Leangineering" "Articles about building software in Lean 4, from this site and the community."
     (mode := mode) [
     div [
-      h1 [ "Writing" ],
+      h1 [ "Articles" ],
       p [ "About building software in Lean, from this site and the community" ] { class_ := "venue" }
     ] { class_ := "title-block" },
     if writing.isEmpty then p [ "Nothing here yet." ] { class_ := "note" }
@@ -719,7 +719,7 @@ def postPage (post : Post) (mode : Mode) : String :=
     div [
       h1 [ (post.title : Node .phrasing) ],
       p [ (Post.formatDate post.date ++ (if post.draft then " · draft" else "") : Node .phrasing), " · ",
-          a { href := "blog" } [ "Writing" ] ] { class_ := "venue" }
+          a { href := "blog" } [ "Articles" ] ] { class_ := "venue" }
     ] { class_ := "title-block" },
     div [
       h2 [ "Abstract" ] { class_ := "abstract-title" },

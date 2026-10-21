@@ -7,7 +7,7 @@ Source for [leangineer.com](https://leangineer.com), a community and learning re
 ## What's here
 
 - `/awesome`: the [awesome-lean-programming](https://github.com/saviorand/awesome-lean-programming) list as a browsable directory, with a page per category and live search, headed by the five projects most recently shared in `#projects-and-repos` on the [Discord](https://discord.gg/ACKNs7ZJPj).
-- `/blog`: writing. The site's own posts, written as maths papers, and posts shared in the Discord's `#blog-posts`.
+- `/blog`: articles. The site's own posts, written as maths papers, and posts shared in the Discord's `#blog-posts`.
 - Guides are coming next.
 
 The directory is generated from the awesome-lean-programming readme, which stays the single source of truth. To change an entry, open a pull request there.
