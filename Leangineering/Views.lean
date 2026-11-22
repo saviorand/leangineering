@@ -461,7 +461,8 @@ that opens with `*Proof.*` starts a proof, which runs to the block ending in `�
 the proof's last sentence. A proof that ends in a code block gets a ∎ on a line of its own, but
 reads better ending in a sentence. A paragraph holding only an image is a numbered figure, captioned
 with the image's alt text. Lean code blocks get the same keyword, string and comment styles as the home
-page's listing.
+page's listing, and TypeScript blocks (`ts`) get the same styles with TypeScript's keywords and `//`
+comments.
 -/
 
 open CommonMark.Parser (RawInline)
@@ -481,12 +482,38 @@ def definingKeywords : List String :=
 def isTypeName (word : String) : Bool :=
   ((word.splitOn ".").getLast?.bind (·.toList.head?)).any Char.isUpper
 
+/-- How a language's code blocks are coloured: its keywords, the keywords after which the next
+word is the name being defined, and what starts a line comment. -/
+structure CodeLang where
+  keywords : List String
+  defining : List String
+  comment : String
+
+def leanLang : CodeLang :=
+  { keywords := leanKeywords, defining := definingKeywords, comment := "--" }
+
+def tsKeywords : List String :=
+  ["function", "const", "let", "var", "return", "if", "else", "for", "while", "do", "switch",
+   "case", "break", "continue", "export", "import", "from", "default", "type", "interface",
+   "class", "extends", "new", "of", "in", "async", "await", "true", "false", "null", "undefined",
+   "number", "string", "boolean", "void"]
+
+def tsLang : CodeLang :=
+  { keywords := tsKeywords, defining := ["function", "class", "interface", "type"], comment := "//" }
+
+/-- The colouring for a code block's info string, if the site colours that language. -/
+def CodeLang.ofInfo : Option String → Option CodeLang
+  | some "lean" => some leanLang
+  | some "ts" => some tsLang
+  | some "typescript" => some tsLang
+  | _ => none
+
 /-- One run of identifier characters, or of anything else, coloured. `afterDef` says whether the
 run follows a defining keyword; the result says whether the next one does. -/
-def highlightRun (afterDef : Bool) (run : List Char) : Node .phrasing × Bool :=
+def highlightRun (lang : CodeLang) (afterDef : Bool) (run : List Char) : Node .phrasing × Bool :=
   let word := String.ofList run
   if !run.any isIdentChar then ((word : Node .phrasing), afterDef && run.all Char.isWhitespace)
-  else if leanKeywords.contains word then (kw word, definingKeywords.contains word)
+  else if lang.keywords.contains word then (kw word, lang.defining.contains word)
   else if afterDef then (tk "tk-def" word, false)
   else if run.all Char.isDigit then (tk "tk-num" word, false)
   else if isTypeName word then (tk "tk-ty" word, false)
@@ -510,12 +537,12 @@ def splitQuotes (s : String) : List String :=
     | c :: rest, cur, acc => go rest (c :: cur) acc
   (go s.toList [] #[]).toList
 
-/-- One line of Lean, with keywords, string literals and a trailing comment marked. `inString` says
+/-- One line of code, with keywords, string literals and a trailing comment marked. `inString` says
 whether the line starts inside a string that an earlier line opened; the result says whether it
 ends inside one. -/
-def highlightLine (inString : Bool) (line : String) : List (Node .phrasing) × Bool :=
-  let (source, comment) := if inString then (line, none) else match line.splitOn "--" with
-    | first :: rest@(_ :: _) => (first, some ("--" ++ "--".intercalate rest))
+def highlightLine (lang : CodeLang) (inString : Bool) (line : String) : List (Node .phrasing) × Bool :=
+  let (source, comment) := if inString then (line, none) else match line.splitOn lang.comment with
+    | first :: rest@(_ :: _) => (first, some (lang.comment ++ lang.comment.intercalate rest))
     | _ => (line, none)
   let segments := splitQuotes source
   -- Segments alternate between code and string, starting with string inside an open one.
@@ -524,7 +551,7 @@ def highlightLine (inString : Bool) (line : String) : List (Node .phrasing) × B
     if (i + offset) % 2 == 1 then
       [str ((if i > 0 then "\"" else "") ++ segment ++ (if i + 1 < segments.length then "\"" else ""))]
     else ((runs isIdentChar segment.toList).foldl (init := (#[], false)) fun (nodes, afterDef) run =>
-      let (node, afterDef) := highlightRun afterDef run
+      let (node, afterDef) := highlightRun lang afterDef run
       (nodes.push node, afterDef)).1.toList
   (code ++ (match comment with | some c => [cm c] | none => []),
    (segments.length - 1 + offset) % 2 == 1)
@@ -532,12 +559,13 @@ def highlightLine (inString : Bool) (line : String) : List (Node .phrasing) × B
 def codeBlock (info : Option String) (literal : String) : Node .flow :=
   let text := (literal.dropEndWhile (· == '\n')).toString
   let body : List (Node .phrasing) :=
-    if info == some "lean" then
+    match CodeLang.ofInfo info with
+    | some lang =>
       let (lines, _) := (text.splitOn "\n").foldl (init := (#[], false)) fun (lines, inString) line =>
-        let (nodes, inString) := highlightLine inString line
+        let (nodes, inString) := highlightLine lang inString line
         (lines.push nodes, inString)
       lines.toList.intersperse [("\n" : Node .phrasing)] |>.flatten
-    else [(text : Node .phrasing)]
+    | none => [(text : Node .phrasing)]
   div [ pre body { class_ := "pane-code" } ] { class_ := "pane code-block" }
 
 /-- Straight quotes as curly ones: a quote after a space, a bracket or nothing opens, any other
