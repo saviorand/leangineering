@@ -16,7 +16,7 @@ More tests don't get you there. In Dan Luu's August runs, asking agents to use R
 
 On 18 November Microsoft Research described a code reviewer that works on the "better" part[^nfvpost]. It starts from the intent of a change, meaning what the change is supposed to do, and writes that intent down as precise properties. An agent tries to prove that the code has each property, and a small, trusted program checks the proof. The researchers call this neuro-formal verification (NFV), and on 38 recent pull requests it checked 217 properties[^prs]. Harmonic's Aristotle, Midspiral's LemmaScript and Don Syme's Lean Squad work in a similar way.
 
-This post asks three questions about tools like these. What does such a proof tell you? That the code has a property you wrote down, under the assumptions it lists. What can't it tell you? Whether the property was the right one, whether it was proved about the code that runs, and whether it says what you meant. Can you stop reading the code? No, but less of it reaches you, and what does has already been checked against the intent. Figure 1 shows the loop. Like my [last post](/blog/realworld-in-lean/), this one borrows the layout of a math paper. I researched and drafted it with Claude Code[^who].
+This post asks three questions about tools like these. What does such a proof tell you? That the code has a property you wrote down, under the assumptions it lists. What can't it tell you? Whether the property was the right one, whether it was proved about the code that runs, and whether it says what you meant. Can you stop reading the code? No, but less of it reaches you, and what does has already been checked against the intent. Figure 1 shows the loop. Like my [last post](/blog/realworld-in-lean/), this one borrows the layout of a math paper.
 
 ## Verdicts
 
@@ -160,8 +160,6 @@ Writing real software in Lean, so that the proofs are about the code that runs, 
 Read all of your agent's code. In Lean, there's less of it and nothing to translate.
 
 ---
-
-[^who]: Claude Code did most of the research at my direction. It read the NFV, claimcheck and LemmaScript repositories and the posts cited here, decoded the data behind Luu's charts, and wrote the first draft.
 
 [^bob]: Robert C. Martin, [post on X](https://x.com/unclebobmartin/status/2080257779395154409), 23 July 2026. His full list is "Unit tests, gherkin tests, QA procedures, quality metrics, mutation testing, test coverage, and a plethora of others". In an [earlier post](https://x.com/unclebobmartin/status/2072736888478175413) he had doubts about piling on tests: "just because we can do them doesn't mean we actually should."
 
