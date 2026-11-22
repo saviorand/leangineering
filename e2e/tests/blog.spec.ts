@@ -23,8 +23,8 @@ test("the home page links to the articles page, which lists the site's posts", a
 
 test("a post renders as a paper", async ({ page }) => {
   await page.goto("blog/");
-  // The site's own posts, not the ones shared from elsewhere.
-  await page.locator(".post-item:not(.shared) .post-title").first().click();
+  // The RealWorld post, which has every part of a paper this test checks, figure included.
+  await page.locator(".post-item:not(.shared) .post-title", { hasText: "RealWorld" }).click();
   await expect(page).toHaveURL(/\/blog\/[^/]+\/?$/);
 
   await expect(page.locator(".abstract")).toBeVisible();

@@ -1,0 +1,177 @@
+---
+title: Checking agent code against your intent
+excerpt: "Coding agents write more code than anyone can review. A few new tools write down what a change is meant to do, have an agent prove that the code does it, and let a small trusted program check the proof. This post explains how they work, what a proof can't tell you, and what is left for you to read."
+date: 2026-11-22
+draft: false
+---
+
+## Introduction
+
+Coding agents now write more code than I can read. Much of it doesn't need to be strictly correct, prototypes and games for example. All of it still has to be good enough, and reading every diff to check that is the part I can't keep up with. The agents' own tests don't settle it either. In Dan Luu's runs with GPT-5.6 Sol in August[^luu], agents left to test in their own way wrote what he later called "many worthless unit tests". A newer model, GPT-6 Astra, used testing techniques more effectively a month later[^astra], but tests written by an agent still encode the agent's idea of what the code should do.
+
+On 18 November Microsoft Research described a code reviewer that does part of this checking[^nfvpost]. It starts from the intent of a change, meaning what the change is supposed to do, and writes that intent down as precise properties. An agent then tries to prove that the code has each property, and a small, trusted program checks the proof. The researchers call the approach neuro-formal verification (NFV). On a sample of 38 pull requests from the past month in Z3 and three other projects, the reviewer checked 217 properties, proving 161 and refuting 18[^prs]. Harmonic's Aristotle, Midspiral's LemmaScript and Don Syme's Lean Squad work in a similar way.
+
+Shuvendu Lahiri, who wrote the NFV paper, asks the question all of these tools are trying to answer: "does the generated code actually do what the user intended?" He expects the answer to decide "whether AI makes software more reliable or merely more abundant"[^lahiri].
+
+For logic whose intent can be written down as properties, a machine can now do part of the review. What is left for you is to read those properties, the assumptions behind them and whatever the machine couldn't settle, which is much less than every line. Like my [last post](/blog/realworld-in-lean/), this one borrows the layout of a math paper, with one definition, a few remarks and an open question.
+
+## The three steps
+
+In 2014 a bug in OpenSSL, later named Heartbleed, let anyone on the internet read a server's memory, up to 64 kilobytes per message. That memory could hold passwords and the server's secret keys[^heartbleed]. The intent behind the fixed code fits in one sentence, which Aristotle uses as its example: "The response is never longer than the request." Getting from that sentence to a checked proof takes three steps.
+
+First, the code is translated into Lean or Dafny, two languages built for writing proofs about programs. Aristotle compiles C, Rust and Verilog into Lean, and LemmaScript compiles TypeScript into Dafny or Lean. Both use an ordinary compiler with no agent involved. NFV has an agent do the translation instead. That works for almost any language but adds a step you have to trust.
+
+Second, the intent is written down as a formal property. Lahiri calls this intent formalization. NFV derives properties "from PR descriptions, issues, discussions and captured source", while Aristotle takes assertions already in the code or a sentence in plain English. In LemmaScript the intent and the property both sit in comments above an ordinary TypeScript function. This one is from LemmaScript's [demo](https://github.com/midspiral/lemmascript-claimcheck/blob/main/examples/demo.ts):
+
+```ts
+//@ contract Clamps x into the inclusive range [lo, hi]; the result never falls outside it.
+//@ requires lo <= hi
+//@ ensures \result >= lo && \result <= hi
+export function clamp(x: number, lo: number, hi: number): number {
+  if (x < lo) return lo;
+  if (x > hi) return hi;
+  return x;
+}
+```
+
+The `contract` line is the intent in English. The `requires` and `ensures` lines are the property. They say that if `lo <= hi` when the function is called, the return value (`\result`) lies between `lo` and `hi`. TypeScript ignores all three lines, so the code that runs doesn't change.
+
+Third, an agent searches for a proof and the checker decides whether it holds. In Harmonic's words, "AI writes the proofs and Lean checks every step of them, so a result never rests on the AI being right." The checker is a small program at the core of Lean or Dafny. It accepts a step only if the step follows from the steps before it.
+
+**Definition 1.** A *proof-backed verdict* on a property is one of three things.
+
+- *Proved*, with the list of assumptions the proof rests on.
+- *Refuted*, with an input on which the property fails.
+- *Unresolved*, if neither a proof nor a counterexample was found in time.
+
+NFV gives the third verdict whenever it can't settle a property. Its author tested it on small Python programs, half of them buggy. NFV settled 57% of them correctly and left most of the rest unresolved, and 92% of the verdicts it did give were right. Asking a model directly whether each program was correct produced an answer every time. Only 72% of those answers were right, and none came with anything that could be checked[^nfv].
+
+## The limits of a proof
+
+A proof covers what its property says and nothing else, so the checker can't tell you whether the property was worth proving. Three things can go wrong.
+
+The agent can prove the wrong property. In Luu's August runs, agents implementing the Zstd compression format in Rust were told to use Lean or another proof tool. They "mostly did arithmetic proofs that didn't hit the bug-prone or risk surface areas"[^luu]. Don Syme says much the same of Lean Squad, which proved more than 1,200 theorems about three open-source codebases: "Most theorems are glorified testing"[^squad]. The newer model did better. With GPT-6 Astra, agents "seemed to use test and verification techniques more effectively", though Luu warns that he doesn't "have enough information to say why almost anything happened"[^astra].
+
+The proof can be about the wrong code. An agent translating a program can model a slightly different program. The NFV blog post admits that "the proof alone cannot establish that the formalization faithfully captures the source program and supplied property." A compiler is more predictable, but it still simplifies. LemmaScript treats TypeScript numbers as exact integers, so its proofs say nothing about floating-point rounding. To find gaps like that, Midspiral wrote a separate tool, crosscheck, which runs the proved model and the real JavaScript on the same inputs and compares the results. This is called differential testing[^ls].
+
+And the property can say less than you meant. Midspiral's claimcheck found this in an election tally that an agent had built and proved. The intent was that the order of the ballots doesn't affect the tally. The proved property only showed that adding a ballot at the front of the list gives the same count as adding it at the end. Dafny accepted it, and it looks right at a glance. But it covers only one way of reordering the ballots[^claimcheck].
+
+**Remark 1 (Agents move the goal).** An agent rewarded for finding a proof can also make the problem easier. The NFV blog post lists the ways an agent does this: "by overconstraining the environment, simplifying the code, or weakening the property". The author also let a single agent translate and prove in one go, with no separate stages. It proved the property for 98% of the correct programs and for 98% of the buggy ones, so half of its verdicts were wrong.
+
+## Habits that keep the agent honest
+
+Each of these tools guards against those failures with checks that run whether or not the agent cooperates. That matters because instructions turn out to be fragile. Luu wrote a testing skill, a file of instructions an agent loads for a task. It helped GPT-5.6 Sol and hurt GPT-6 Astra, and he concluded that skills like it are "very difficult" to write so that they work "across models and effort levels"[^astra].
+
+NFV freezes the goal before the proof search starts. The translated program and the property are written down and locked. The agent looking for a proof may add proof steps but may not change either of them. LemmaScript's seal does the same across commits. It keeps a ledger of the proved properties of every function in the repository. Its check runs on every commit or in CI and fails if a sealed property is changed or removed. The README puts it as "The prover proves the present; the seal protects the past."
+
+Midspiral's claimcheck has the property read back by a model that doesn't know the intent. One model restates the formal property in plain English without seeing what it was meant to say. A second model compares that restatement with the intent. LemmaScript builds this in, and `lsc claimcheck` compares each `contract` line with the property under it. The demo file from earlier has a second function, whose contract claims more than its property:
+
+```ts
+//@ contract Returns the larger of a and b.
+//@ ensures \result >= a
+export function largest(a: number, b: number): number {
+  return a >= b ? a : b;
+}
+```
+
+The code is correct and the property is proved, but the property never mentions `b`. In claimcheck's restatement, the function "returns a number that is greater than or equal to a". That isn't "the larger of a and b", so the [report](https://github.com/midspiral/lemmascript-claimcheck/blob/main/examples/demo.guarantees.md) marks the function as disputed. Its authors call claimcheck "a probabilistic sanity check that requires human review and approval"[^claimcheck].
+
+Aristotle and NFV list the assumptions behind every verdict. Harmonic's write-up on the LibTomMath library, where Aristotle fixed three bugs and proved the repaired code, has a section called "Outside the proof" for what wasn't covered[^tom].
+
+NFV also stops the search early. In its experiments, proofs that took many attempts were more likely to be wrong. The authors' explanation is that each extra attempt gives the agent another chance to weaken the goal. So NFV caps the search at five rounds and reports what is still open as unresolved[^rounds].
+
+## Changes to code review
+
+The first change is that the agent gets its feedback from the checker. Midspiral shows this with a bill-splitting app. Here is its `allocate` function after the agent's fix, with most of the `requires` lines left out:
+
+```ts
+//@ contract Splits total across weights so every unit is accounted for.
+//@ requires total >= 0
+// ...
+//@ ensures sum(\result) === total
+function allocate(total: number, weights: number[]): number[] {
+  const W = sum(weights);
+  const result = weights.map(w => Math.floor(total * w / W));
+  const left = total - sum(result);  // the leftover, lost to flooring
+  for (let k = 0; k < left; k++)
+    result[k] = result[k] + 1;  // hand them back out
+  return result;
+}
+```
+
+The agent's first version ended at the `Math.floor` line, which rounds each share down. Split three ways, a total of 100 cents came to 99, so the `ensures` line failed and the proof didn't go through. The agent read the error and added the loop that hands out the leftover, and the property stayed as it was. Midspiral notes that "this correction happened without a human in the loop"[^eventab]. In their description of lemmafit, a related tool, the agent's job becomes proposing "implementation candidates that are externally checked by a deterministic process".
+
+The second change is to your own review, which can start from the intent. You read the list of properties and ask of each one whether it is what you meant, then what it assumes and what was left unresolved. A refuted property comes with an input on which the code fails, and that is easier to act on than a feeling that something looks off. NFV's comments on pull requests are laid out this way. Each refuted property shows the intended property, an input on which it fails and a sketch of why.
+
+Refactors and rewrites are easier still. Their intent is to behave as before, and the old code already says what that means. Differential testing can compare the old and the new version directly.
+
+In Luu's evals, differential testing was the third-worst technique with GPT-5.6 Sol. With GPT-6 Astra it came out narrowly ahead of the other 24 on his hardest task, a Rust implementation of the Pandoc document converter[^diff]. The bad result is the one to remember. With Sol, agents "did the same thing twice and encoded the same bug in both versions", so the comparison only helps if the agent didn't write both sides. Aristotle offers the proof version of the same check for C code rewritten in Rust.
+
+**Remark 2 (Where it's worth it).** Proofs are most useful for the logic the rest of an app depends on, such as state changes, money and permissions. A LemmaScript codebase is split into a verified core and an unverified shell for the user interface, network and storage. One of its case studies proves the cookie handling behind a security fix in the Hono web framework.
+
+For code that doesn't justify a proof, Lahiri describes a range of options "from lightweight tests that disambiguate likely misinterpretations, through full functional specifications for formal verification". The same habits work at the light end. Before writing the code, you write the property as a property-based test, which checks it on many generated inputs. Then you keep the agent from editing the test and have a second agent read it back.
+
+Agents have become better at such tests. With GPT-6 Astra, the property-based testing libraries in Luu's evals "finally resulted in tests that do what one might hope". The light end isn't free either. A reader of Luu's blog described a rewrite in which generated tests found about 20 bugs that more than 100 agent reviewers had missed. It took a 300,000-line test harness for a 30,000-line change. He called the result negative[^leventov].
+
+If you want to try this, here's where to start:
+
+- [LemmaScript](https://github.com/midspiral/LemmaScript) for TypeScript, open source and in tech preview.
+- NFV's [code reviewer](https://github.com/microsoft/neuro-formal-verification) for pull requests in most languages, an open-source prototype that runs as a GitHub Agentic Workflow.
+- [Aristotle](https://www.harmonic.fun/aristotle/) for Rust, C and Verilog, a commercial service.
+- [Lean Squad](https://github.com/githubnext/agentics/blob/main/docs/lean-squad.md) for Rust or C++ with Lean on the side, a GitHub Agentic Workflow you add to a repository.
+- Property-based testing libraries for the light end in any language, such as Hypothesis for Python, fast-check for TypeScript and proptest for Rust.
+
+## Code written in Lean
+
+Lean already sits underneath several of these tools. It checks the proofs in Aristotle and Lean Squad, and LemmaScript can compile TypeScript into it. In all of them the first step, the translation, is still something you have to trust. A compiler does it in some tools and an agent in others, and both leave some behavior out.
+
+If the code itself is written in Lean, there is nothing to translate. The program that runs is the program the proofs are about. In my RealWorld app, the function that turns an article's title into its URL slug has a theorem about it. The server calls that same function when it creates an article:
+
+```lean
+-- RealWorld/Slug.lean
+theorem ofTitle_valid (title : String) : Valid (ofTitle title).toList := by
+  ...
+
+-- RealWorld/Service.lean, creating an article
+let slug ← withUniqueSlug env (Slug.ofTitle a.title) fun db slug => Db.insertArticle db slug me.id a
+```
+
+`Valid` says what a slug may look like, which is lowercase letters and digits with single hyphens between words. The theorem and the server use the same `ofTitle`, so there's no translation of it to get wrong. The NFV README calls this the limit of the whole approach: "In the limit, NFV reduces to formal verification: checking a formal assertion about a closed program with no external environment in a language with a trusted logical encoding."
+
+A real application still has a database, a network and C libraries underneath, and those sit outside the proof. What goes away is the model of your own code, and with it the chance that the model is wrong. Getting real software to that point is what this site is about. My [RealWorld post](/blog/realworld-in-lean/) shows how far a full-stack web app in Lean gets today.
+
+**Question 1.** Who writes the intent down? That job remains even when everything is in Lean. Don Syme got the idea of letting agents do everything in Lean Squad from a conversation with Cédric Fournet at Microsoft Research. Fournet had asked, "where will the specs come from once we can automate the proofs and automate the correspondence?" Lahiri's intent paper says that "there is no oracle for specification correctness other than the user". Agents can draft the properties and tools like claimcheck can test them. How much of the intent can be settled without the developer remains open.
+
+**Remark 3 (Who wrote it).** Claude Code did most of the research for this post at my direction. It read the NFV, claimcheck and LemmaScript repositories as well as the posts cited here, decoded the data behind Luu's charts, and wrote the first draft.
+
+---
+
+[^luu]: Dan Luu, ["How well do agents use test and verification techniques?"](https://danluu.com/agentic-testing/), September 2026. He ran Codex with GPT-5.6 Sol 160 times for each of 26 instructions, such as "Use Lean 4" or "Use property-based testing". Asked to use a particular technique, agents mostly wrote the tests they would have written anyway, inside whatever framework they were told to use. The runs with no instructions about testing still did better than most of the others.
+
+[^astra]: Dan Luu, ["Test/verification technique effectiveness with Astra"](https://danluu.com/astra-testing/), November 2026, with runs from September. On the Zstd task almost every condition now came out fully correct almost every time, so he added two harder ones, implementing IMAP (80 runs per condition) and Pandoc (25 runs per condition, about $90,000 at list prices). The "many worthless unit tests" are his summary of the August runs. He also disputes a widely shared claim that AI-written tests are "empirically proven to be unhelpful". In both of his evals ACL2, an older theorem prover, did better than Lean, and he expects Lean to "eventually outperform ACL2" given the effort going into it.
+
+[^nfvpost]: Shuvendu K. Lahiri, ["Neuro-Formal Code Review: Can Proofs Help Enforce Intent at Scale?"](https://risemsr.github.io/blog/2026-11-18-neuro-formal-code-review/), RiSE MSR Blog, 18 November 2026. The method itself is in his paper ["Neuro-Formal Verification: Agentic Language-Agnostic Formal Program Reasoning"](https://arxiv.org/abs/2608.21516).
+
+[^prs]: From the results table in the blog post. The other three projects are NVX, LiteBox and Semantic Kernel. Both kinds of verdict are about the agent's model of each change, and the post notes that the refutations "have not been fully vetted".
+
+[^lahiri]: Shuvendu K. Lahiri, ["Intent Formalization: A Grand Challenge for Reliable Coding in the Age of AI Agents"](https://arxiv.org/abs/2603.17150), 2026.
+
+[^heartbleed]: [heartbleed.com](https://heartbleed.com/), CVE-2014-0160. OpenSSL 1.0.1g fixed it on 7 April 2014. The 64-kilobyte limit applies to a single message, and an attacker could keep sending more.
+
+[^nfv]: From the [NFV paper](https://arxiv.org/abs/2608.21516). The benchmark pairs small Python programs with buggy variants of them. The model asked directly is the paper's LLM-as-judge baseline.
+
+[^squad]: Don Syme, ["Lean Squad: Automated Software Verification with Near-Zero Human Labour"](https://dsyme.net/2026/04/20/lean-squad-automated-software-verification-with-near-zero-human-labour/), April 2026. It proved 443 theorems about raft-rs, 518 about Cloudflare's quiche and 259 about the PX4 drone autopilot. In PX4 it found two real bugs. One is a sign function that should always return 1 or -1 but returns 0 for NaN.
+
+[^ls]: Midspiral, ["Shallow embedding: why LemmaScript translates TypeScript straight into Dafny"](https://midspiral.com/blog/shallow-embedding-why-lemmascript-translates-typescript-straight-into-dafny/), August 2026, and the [crosscheck repository](https://github.com/midspiral/lemmascript-crosscheck). Crosscheck tries sampled inputs, so a clean run is evidence and not a proof. Since the model is compiled from the same TypeScript, crosscheck finds places where Dafny and JavaScript give different results, not places where the code doesn't match your intent.
+
+[^claimcheck]: Fernanda Graciolli and Nada Amin, ["claimcheck: Narrowing the Gap between Proof and Intent"](https://midspiral.com/blog/claimcheck-narrowing-the-gap-between-proof-and-intent/). On 189 human-written Lean specifications from the VERINA benchmark, the authors judged about 30 to 40 of its disputes to be false alarms ([report](https://github.com/metareflection/claimcheck/blob/main/reports/VERINA.md)).
+
+[^tom]: Harmonic, ["Speed up your code without wondering what you broke"](https://www.harmonic.fun/aristotle/case-studies/libtommath/). Among other things, the section says that full modular exponentiation was benchmarked but not proved.
+
+[^rounds]: The numbers are in a comment in NFV's [proof agent](https://github.com/microsoft/neuro-formal-verification/blob/dev/nfv/agent/invariant_agent.py). With GPT-5.5, 80% of proofs succeeded in the first round. Wrong proofs took 2.40 rounds on average, and correct ones took 1.06.
+
+[^eventab]: Midspiral, ["LemmaScript contracts by example"](https://midspiral.com/blog/lemmascript-contracts-by-example/), November 2026. The lemmafit quote is from ["Introducing lemmafit: A Verifier in the AI Loop"](https://midspiral.com/blog/introducing-lemmafit-a-verifier-in-the-ai-loop/), March 2026.
+
+[^diff]: Read from the data behind his [Pandoc chart](https://danluu.com/interactive/astra-testing/pandoc-spend-slider.html), which scores each run on held-out tests the agent never saw. At $100 of spending per run, his fitted curves give 39.5% of those tests passed for differential testing, 38.8% for the next best condition and 38.2% for no instructions. Each condition's average has a standard error of about one point. On his [IMAP chart](https://danluu.com/interactive/astra-testing/imap-xhigh-percent-perfect.html), differential testing is in the middle, with 93.8% of runs fully correct against 95.0% for no instructions.
+
+[^leventov]: Roman Leventov, in a comment quoted at the end of Luu's [Astra post](https://danluu.com/astra-testing/). The system automates parts of a support chat and is written in TypeScript as a statechart. Agent reviewers found about 210 bugs in total, and 4 or 5 "very 'stupid' bugs" still reached production.
