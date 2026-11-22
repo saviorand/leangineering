@@ -3,6 +3,7 @@ title: Checking agent code against your intent
 excerpt: "Coding agents write more code than anyone can review. A few new tools write down what a change is meant to do, have an agent prove that the code does it, and let a small trusted program check the proof. They don't replace reading the code, but they can send wrong code back before it reaches you. This post explains how they work and what a proof can't tell you."
 date: 2026-11-22
 draft: false
+image: checking-agent-code-og.png
 ---
 
 ## Introduction
